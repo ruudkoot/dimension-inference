@@ -1,0 +1,4 @@
+let id = \x -> x
+  ; const = \x y -> x
+in const id 1.0 
+ni
