@@ -65,4 +65,7 @@ newtype TySubst = TySubst (Map TyVar Ty)
 
 -- | Unification
 
+main :: IO ()
+main = do
+        putStrLn "U34r1337"
 

@@ -1,0 +1,10 @@
+MODULE {SystemF}
+{}
+
+{
+import qualified Data.Map as Map
+
+}
+
+PRAGMA genlinepragmas
+
