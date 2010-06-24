@@ -38,8 +38,7 @@ parseProgram :: String -> Either ParseError Exp
 parseProgram = parse (whiteSpace lexer *> parseExp <* eof) ""
 
 parseExp :: Parser Exp
-parseExp = try parseApp
-       <|> parseExp'
+parseExp = (\(e:es) -> foldl App e es) <$> many1 parseExp'
        <?> "exp"
 
 parseExp' :: Parser Exp
@@ -48,6 +47,7 @@ parseExp' = Var <$> parseVar
         <|> parseLambda
         <|> parseLet
         <|> parseFix
+        <|> parens lexer parseExp
         <?> "exp'"
 
 {-
