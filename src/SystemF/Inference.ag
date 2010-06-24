@@ -24,8 +24,8 @@ DATA Exp
     | Lam var:Var exp:Exp               -- Lambda-abstraction
     | App exp:Exp arg:Exp               -- Application
     | Fix exp:Exp                       -- Fixed point
-    | Let stats:{Map.Map Var Exp} exp:Exp     -- Let-binding
-    | If  cond:Exp thn:Exp els:Exp      -- Case-statement
+    | Let var:Var val:Exp exp:Exp     -- Let-binding
+    | If  cnd:Exp thn:Exp els:Exp      -- Case-statement
 DERIVING Exp: Eq, Show, Ord
 
 SET All = Con Exp
@@ -34,7 +34,7 @@ ATTR Con [||tycon : TyCon]
 
 ATTR Exp [env   : TyEnv
          |unique: Int
-         |subst USE {`composeSubst`} {nullSubst} : TySubst
+         |subst USE {<+>} {nullSubst} : TySubst
           ty    : Ty
          ]
 
@@ -45,14 +45,51 @@ SEM Con
 SEM Exp
     | Var Con Lam App Fix Let If
         loc.id : UNIQUEREF unique
+        loc.var = TyVar $ "V_" ++ show @loc.id
     
-    | Var   lhs.ty = case Map.lookup @var @lhs.env of
+    | Var   lhs.ty  = case Map.lookup @var @lhs.env of
                         Nothing -> error $ "Unbound variable" ++ @var
-                        Just ts -> instantiate ("V_" ++ show @loc.id) ts
+                        Just ts -> instantiate ("I_" ++ show @loc.id ++ "_") ts
     
-    | Con   lhs.con = TyCon @con
+    | Con   lhs.ty  = TyCon @con.tycon
     
+    | Lam   exp.env = Map.insert @var (TyScheme [] @loc.var) @lhs.env            
+            lhs.ty  = TyFun (apply @exp.subst @loc.var) @exp.ty
+            
+    | App   exp.env = @lhs.env
+            arg.env = apply @exp.subst @lhs.env            
+            loc.subst' = mgu (apply @arg.subst @exp.ty) (TyFun @arg.ty @loc.var)            
+            lhs.ty  = apply @loc.subst' @loc.var
+            +subst  = @loc.subst' <+>
+    
+    | Let   val.env = @lhs.env
+            exp.env = let gen  = generalize (apply @val.subst @lhs.env) @val.ty
+                      in apply @val.subst $ Map.insert @var gen @lhs.env
+            lhs.ty  = @exp.ty            
+
+    | If    cnd.env = @lhs.env
+            thn.env = apply @cnd.subst @lhs.env
+            els.env = apply (@cnd.subst <+> @thn.subst) @lhs.env
+            loc.consubst = mgu (apply (@thn.subst <+> @els.subst) @cnd.ty) 
+                                (TyCon TyBool)
+            loc.blocksubst = mgu (apply (@els.subst <+> @loc.consubst) @thn.ty) 
+                                  (apply @loc.consubst @els.ty)
+            +subst  = (@loc.consubst <+> @loc.blocksubst) <+>
+            lhs.ty  = apply (@loc.consubst <+> @loc.blocksubst) @els.ty
+            
 {
 nextUnique :: Int -> (Int, Int)
 nextUnique u = (u+1, u)
+
+inh::Inh_Exp
+inh = Inh_Exp
+      {env_Inh_Exp = Map.empty
+      ,unique_Inh_Exp = 0
+      }
+      
+infer :: Exp -> Ty
+infer e = let res   = wrap_Exp (sem_Exp e) inh
+              subst = subst_Syn_Exp res
+              ty    = ty_Syn_Exp res
+          in apply subst ty
 }     

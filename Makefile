@@ -1,5 +1,5 @@
 CABAL-CONFIGURE-FLAGS := --user
-CABAL-BUILD-FLAGS     :=
+CABAL-BUILD-FLAGS     := --user
 
 all : haskell
 

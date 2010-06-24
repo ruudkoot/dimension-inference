@@ -60,6 +60,8 @@ nullSubst = Map.empty
 composeSubst :: TySubst -> TySubst -> TySubst
 composeSubst s1 s2 = (Map.map (apply s1) s2) `Map.union` s1
 
+(<+>) :: TySubst -> TySubst -> TySubst
+a <+> b = composeSubst a b
 
 generalize :: TyEnv -> Ty -> TyScheme
 generalize env t = TyScheme vars t
@@ -75,8 +77,8 @@ instantiate prefix (TyScheme vars t) =
 -- Unification
 mgu :: Ty -> Ty -> TySubst
 mgu (TyFun l r) (TyFun l' r') = let s1 = mgu l l'
-                                    s2 = mgu (apply s1 r) (apply s2 r')
-                                in s1 `composeSubst` s2
+                                    s2 = mgu (apply s1 r) (apply s1 r')
+                                in s1 <+> s2
 mgu (TyVar u)   t             = varBind u t
 mgu t           (TyVar u)     = varBind u t
 mgu (TyCon a)   (TyCon b)     = if a == b 

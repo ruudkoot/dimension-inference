@@ -18,4 +18,5 @@ main = do   (file:_) <- getArgs
             inp <- readFile file
             let prog = doParse inp
             print prog
+            print (infer prog)
 

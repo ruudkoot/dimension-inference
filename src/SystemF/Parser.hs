@@ -94,15 +94,14 @@ parseFix = Fix <$> (reserved lexer "fix" *> parseExp)
         <?> "FixPoint"
 
 parseLet :: Parser Exp
-parseLet = (\_ vs _ e _ -> Let vs e)
+parseLet = (\_ vs _ e _ -> foldr (\(var,val) e -> Let var val e) e vs)
        <$> reserved lexer "let"
        <*> parseLet'
        <*> reserved lexer "in"
        <*> parseExp
        <*> reserved lexer "ni"
        <?> "Let"
-    where parseLet' = foldr (\(var,exp) m -> Map.insert var exp m) Map.empty
-                  <$> sepBy1 ((,) <$> parseVar <*> (reservedOp lexer "=" *> parseExp)) (semi lexer)
+    where parseLet' = sepBy1 ((,) <$> parseVar <*> (reservedOp lexer "=" *> parseExp)) (semi lexer)
 
 parseIf :: Parser Exp
 parseIf = (\_ c _ t _ e _ -> If c t e)
