@@ -26,7 +26,7 @@ systemFDef
    , opStart        = opLetter systemFDef
    , opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
    , reservedOpNames= ["\\","->","="]
-   , reservedNames  = ["let","in","ni","true","false","fix","if","then","else"]
+   , reservedNames  = ["let","in","ni","true","false","fix","if","then","else","fi"]
    , caseSensitive  = False
    }
 
@@ -47,6 +47,7 @@ parseExp' = Var <$> parseVar
         <|> parseLambda
         <|> parseLet
         <|> parseFix
+        <|> parseIf
         <|> parens lexer parseExp
         <?> "exp'"
 
@@ -103,4 +104,12 @@ parseLet = (\_ vs _ e _ -> Let vs e)
     where parseLet' = foldr (\(var,exp) m -> Map.insert var exp m) Map.empty
                   <$> sepBy1 ((,) <$> parseVar <*> (reservedOp lexer "=" *> parseExp)) (semi lexer)
 
-
+parseIf :: Parser Exp
+parseIf = (\_ c _ t _ e _ -> If c t e)
+      <$> reserved lexer "if"
+      <*> parseExp
+      <*> reserved lexer "then"
+      <*> parseExp
+      <*> reserved lexer "else"
+      <*> parseExp
+      <*> reserved lexer "fi"
