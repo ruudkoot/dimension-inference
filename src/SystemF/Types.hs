@@ -62,4 +62,19 @@ generalize :: TyEnv -> Ty -> TyScheme
 generalize env t = TyScheme vars t
     where vars = Set.toList $ ftv t Set.\\ ftv env
     
+-- Unification
+mgu :: Ty -> Ty -> TySubst
+mgu (TyFun l r) (TyFun l' r') = let s1 = mgu l l'
+                                    s2 = mgu (apply s1 r) (apply s2 r')
+                                in s1 `composeSubst` s2
+mgu (TyVar u)   t             = varBind u t
+mgu t           (TyVar u)     = varBind u t
+mgu (TyCon a)   (TyCon b)     = if a == b 
+                                then nullSubst
+                                else error $ "Constants don't unify: " ++ show a ++ " vs " ++ show b
+mgu t1          t2            = error $ "Types don't unify: " ++ show t1 ++ " vs " ++ show t2
 
+varBind :: String -> Ty -> TySubst
+varBind u t | t == TyVar u          = nullSubst
+            | u `Set.member` ftv t  = error $ "Occurs check failed:" ++ u ++ " -- " ++ show t
+            | otherwise             = Map.singleton u t
