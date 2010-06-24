@@ -5,6 +5,9 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.Maybe
 
+import Control.Monad
+import Control.Monad.State
+
 type TyVar = String
 
 data TyCon =
@@ -61,7 +64,14 @@ composeSubst s1 s2 = (Map.map (apply s1) s2) `Map.union` s1
 generalize :: TyEnv -> Ty -> TyScheme
 generalize env t = TyScheme vars t
     where vars = Set.toList $ ftv t Set.\\ ftv env
-    
+
+
+instantiate :: String -> TyScheme -> Ty
+instantiate prefix (TyScheme vars t) = 
+    let nvars = map (TyVar . (prefix ++). show) [1..]
+        subst = Map.fromList $ zip vars nvars
+    in apply subst t
+
 -- Unification
 mgu :: Ty -> Ty -> TySubst
 mgu (TyFun l r) (TyFun l' r') = let s1 = mgu l l'
@@ -73,6 +83,7 @@ mgu (TyCon a)   (TyCon b)     = if a == b
                                 then nullSubst
                                 else error $ "Constants don't unify: " ++ show a ++ " vs " ++ show b
 mgu t1          t2            = error $ "Types don't unify: " ++ show t1 ++ " vs " ++ show t2
+
 
 varBind :: String -> Ty -> TySubst
 varBind u t | t == TyVar u          = nullSubst

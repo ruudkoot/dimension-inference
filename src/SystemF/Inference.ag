@@ -8,16 +8,16 @@ import Data.Maybe
 import SystemF.Types
 
 type Var = String
-
-data Con = 
-      Bool Bool
-    | Real Double
-    deriving (Eq,Ord,Show)
-      
+     
 }
 
 PRAGMA genlinepragmas
 
+DATA Con 
+    | Bool bool:Bool
+    | Real real:Double
+DERIVING Con: Eq,Ord,Show
+    
 DATA Exp 
     | Var var:Var                       -- Variables
     | Con con:Con                       -- Constants
@@ -27,4 +27,32 @@ DATA Exp
     | Let stats:{Map.Map Var Exp} exp:Exp     -- Let-binding
     | If  cond:Exp thn:Exp els:Exp      -- Case-statement
 DERIVING Exp: Eq, Show, Ord
-     
+
+SET All = Con Exp
+
+ATTR Con [||tycon : TyCon]
+
+ATTR Exp [env   : TyEnv
+         |unique: Int
+         |subst USE {`composeSubst`} {nullSubst} : TySubst
+          ty    : Ty
+         ]
+
+SEM Con
+    | Bool  lhs.tycon = TyBool
+    | Real  lhs.tycon = TyReal
+                 
+SEM Exp
+    | Var Con Lam App Fix Let If
+        loc.id : UNIQUEREF unique
+    
+    | Var   lhs.ty = case Map.lookup @var @lhs.env of
+                        Nothing -> error $ "Unbound variable" ++ @var
+                        Just ts -> instantiate ("V_" ++ show @loc.id) ts
+    
+    | Con   lhs.con = TyCon @con
+    
+{
+nextUnique :: Int -> (Int, Int)
+nextUnique u = (u+1, u)
+}     
