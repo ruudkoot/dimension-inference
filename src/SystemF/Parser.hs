@@ -7,11 +7,27 @@ import Text.Parsec.Combinator
 import Text.Parsec.Prim
 
 import SystemF.Inference
+import SystemF.Types
+import SystemF.Units
 
 import qualified Data.Map as Map
 import Control.Applicative hiding ((<|>))
 
 type Parser = Parsec String ()
+
+keywords::[String]
+keywords = ["let","in","ni","true","false","fix","if","then","else","fi"]
+
+tyconsts::[String]
+tyconsts = ["bool","real"]
+
+unconsts::[(String,String)]
+unconsts = [("m","L")
+           ,("s","T")
+           ,("kg","M")]
+
+unparseconsts :: [String]
+unparseconsts = map fst unconsts
 
 --Definitions for the lexer created by parsec, see parsec documentation 2.8/2.9 and refernce guide
 systemFDef::LanguageDef a
@@ -25,9 +41,9 @@ systemFDef
    , identLetter    = alphaNum <|> char '-' <|> char '_'
    , opStart        = opLetter systemFDef
    , opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
-   , reservedOpNames= ["\\","->","="]
-   , reservedNames  = ["let","in","ni","true","false","fix","if","then","else","fi"]
-   , caseSensitive  = False
+   , reservedOpNames= ["\\","->","=","::","^","-"]
+   , reservedNames  = keywords ++ tyconsts ++ unparseconsts
+   , caseSensitive  = True
    }
 
 --Parsec lexer
@@ -64,7 +80,7 @@ parseVar = identifier lexer
 
 parseConst :: Parser Con
 parseConst = Bool <$> parseBoolean
-         <|> Real <$> parseReal
+         <|> (flip Real) UnUnit <$> parseReal
          <?> "constant"
          
 parseBoolean :: Parser Bool
@@ -93,16 +109,6 @@ parseFix :: Parser Exp
 parseFix = Fix <$> (reserved lexer "fix" *> parseExp)
         <?> "FixPoint"
 
-parseLet :: Parser Exp
-parseLet = (\_ vs _ e _ -> foldr (\(var,val) e -> Let var val e) e vs)
-       <$> reserved lexer "let"
-       <*> parseLet'
-       <*> reserved lexer "in"
-       <*> parseExp
-       <*> reserved lexer "ni"
-       <?> "Let"
-    where parseLet' = sepBy1 ((,) <$> parseVar <*> (reservedOp lexer "=" *> parseExp)) (semi lexer)
-
 parseIf :: Parser Exp
 parseIf = (\_ c _ t _ e _ -> If c t e)
       <$> reserved lexer "if"
@@ -112,3 +118,57 @@ parseIf = (\_ c _ t _ e _ -> If c t e)
       <*> reserved lexer "else"
       <*> parseExp
       <*> reserved lexer "fi"
+
+parseLet :: Parser Exp
+parseLet = (\_ vs _ e _ -> foldr (\(ty,var,val) e -> Let var val e ty) e vs)
+       <$> reserved lexer "let"
+       <*> parseLets
+       <*> reserved lexer "in"
+       <*> parseExp
+       <*> reserved lexer "ni"
+       <?> "Let"
+    where parseLets = sepBy1 parseLet' (semi lexer) 
+          parseLet' = (,,)
+                  <$> option Nothing (Just <$> parseType) 
+                  <*> parseVar
+                  <*> (reservedOp lexer "=" *> parseExp)
+        
+parseType :: Parser Ty
+parseType = braces lexer parseTyFunc
+            
+parseType' :: Parser Ty
+parseType' = (TyCon <$> parseTyConst)
+         <|> (TyVar <$> parseVar)
+         <|> parens lexer parseTyFunc
+
+parseTyFunc :: Parser Ty
+parseTyFunc = (\(v:vs) -> foldl (flip TyFun) v vs) . reverse
+          <$> sepBy1 parseType' (reservedOp lexer "->")
+          <?> "Type Function"
+        
+parseTyConst :: Parser TyCon
+parseTyConst = (TyBool <$  reserved lexer "bool")
+           <|> (TyReal <$> (reserved lexer "real"
+                           *> option UnUnit parseUnit))
+
+parseUnit :: Parser Un
+parseUnit = (\(x:xs) -> foldl UnProd x xs)
+        <$> braces lexer (many1 parseUnit')
+        <?> "Units"
+        
+parseUnit' :: Parser Un
+parseUnit' = createUnit
+         <$> (UnVar <$> parseVar 
+         <|> parseUnConst) 
+         <*> option False (True <$ reservedOp lexer "-")
+         <*> option 1 (decimal lexer)
+         <?> "Unit"
+         where  createUnit ty neg pow = if neg 
+                                        then UnInv $ createUnitProd ty pow
+                                        else createUnitProd ty pow
+                createUnitProd ty 1   = ty
+                createUnitProd ty n   = UnProd ty $ createUnitProd ty (n-1)
+         
+parseUnConst :: Parser Un
+parseUnConst = choice $ map parseSingle unconsts
+    where  parseSingle (un,dim) = UnCon dim <$ reserved lexer un

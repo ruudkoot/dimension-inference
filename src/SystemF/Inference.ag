@@ -6,6 +6,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 
 import SystemF.Types
+import SystemF.Units
 
 type Var = String
      
@@ -15,7 +16,7 @@ PRAGMA genlinepragmas
 
 DATA Con 
     | Bool bool:Bool
-    | Real real:Double
+    | Real real:Double ucon:Un
 DERIVING Con: Eq,Ord,Show
     
 DATA Exp 
@@ -24,8 +25,9 @@ DATA Exp
     | Lam var:Var exp:Exp               -- Lambda-abstraction
     | App exp:Exp arg:Exp               -- Application
     | Fix exp:Exp                       -- Fixed point
-    | Let var:Var val:Exp exp:Exp     -- Let-binding
-    | If  cnd:Exp thn:Exp els:Exp      -- Case-statement
+    | Let var:Var val:Exp exp:Exp utype:{Maybe Ty}  -- Let-binding
+    | If  cnd:Exp thn:Exp els:Exp       -- Case-statement
+
 DERIVING Exp: Eq, Show, Ord
 
 SET All = Con Exp
@@ -38,9 +40,14 @@ ATTR Exp [env   : TyEnv
           ty    : Ty
          ]
 
+{-ATTR All [
+         |
+         |
+         ]
+  -}       
 SEM Con
     | Bool  lhs.tycon = TyBool
-    | Real  lhs.tycon = TyReal
+    | Real  lhs.tycon = TyReal UnUnit
                  
 SEM Exp
     | Var Con Lam App Fix Let If
@@ -53,14 +60,14 @@ SEM Exp
     
     | Con   lhs.ty  = TyCon @con.tycon
     
-    | Lam   exp.env = Map.insert @var (TyScheme [] @loc.var) @lhs.env            
+    | Lam   exp.env = Map.insert @var (TyScheme [] [] @loc.var) @lhs.env            
             lhs.ty  = TyFun (apply @exp.subst @loc.var) @exp.ty
             
     | App   exp.env = @lhs.env
             arg.env = apply @exp.subst @lhs.env            
             loc.subst' = mgu (apply @arg.subst @exp.ty) (TyFun @arg.ty @loc.var)            
             lhs.ty  = apply @loc.subst' @loc.var
-            +subst  = @loc.subst' <+>
+            +subst  = (@loc.subst' <+>)
     
     | Let   val.env = @lhs.env
             exp.env = let gen  = generalize (apply @val.subst @lhs.env) @val.ty
@@ -74,9 +81,30 @@ SEM Exp
                                 (TyCon TyBool)
             loc.blocksubst = mgu (apply (@els.subst <+> @loc.consubst) @thn.ty) 
                                   (apply @loc.consubst @els.ty)
-            +subst  = (@loc.consubst <+> @loc.blocksubst) <+>
+            +subst  = (@loc.consubst <+> @loc.blocksubst <+>)
             lhs.ty  = apply (@loc.consubst <+> @loc.blocksubst) @els.ty
             
+ATTR All [ indent: Int
+         |
+         | text: String]
+         
+SEM Con
+    | Bool lhs.text = show @bool
+    | Real lhs.text = show @real ++ ":" ++ show @ucon
+    
+SEM Exp
+    | Var lhs.text = @var
+    | Con lhs.text = @con.text
+    | Lam lhs.text = "(\\" ++ @var ++ " -> " ++ @exp.text ++ ")"
+    | App lhs.text = "(" ++ @exp.text ++ " " ++ @arg.text++")"
+    | Fix lhs.text = "(fix " ++ @exp.text ++ ")"
+    | Let lhs.text = "let " ++ maybe "" (\v -> "{"++show v ++"}\n" ++ replicate (@lhs.indent + 4) ' ') @utype ++ 
+                       @var ++ " = " ++ @val.text ++ "\n" ++ replicate @lhs.indent ' ' ++
+                     "in  " ++ @exp.text
+          exp.indent = @lhs.indent + 4
+          val.indent = @lhs.indent + 4
+    | If  lhs.text = undefined --cnd:Exp thn:Exp els:Exp       -- Case-statement
+    
 {
 nextUnique :: Int -> (Int, Int)
 nextUnique u = (u+1, u)
@@ -84,6 +112,7 @@ nextUnique u = (u+1, u)
 inh::Inh_Exp
 inh = Inh_Exp
       {env_Inh_Exp = Map.empty
+      ,indent_Inh_Exp = 0
       ,unique_Inh_Exp = 0
       }
       
@@ -92,4 +121,7 @@ infer e = let res   = wrap_Exp (sem_Exp e) inh
               subst = subst_Syn_Exp res
               ty    = ty_Syn_Exp res
           in apply subst ty
+          
+pprint :: Exp -> String
+pprint e = text_Syn_Exp $ wrap_Exp (sem_Exp e) inh
 }     

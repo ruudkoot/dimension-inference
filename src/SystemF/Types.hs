@@ -3,16 +3,19 @@ module SystemF.Types where
 
 import qualified Data.Set as Set
 import qualified Data.Map as Map
+
 import Data.Maybe
 
 import Control.Monad
 import Control.Monad.State
 
+import SystemF.Units
+
 type TyVar = String
 
 data TyCon =
       TyBool
-    | TyReal
+    | TyReal Un
     deriving (Eq,Ord,Show)
 
 data Ty =
@@ -21,7 +24,7 @@ data Ty =
     | TyFun  Ty Ty          -- Function-space constructor
     deriving (Eq, Show, Ord)
 
-data TyScheme = TyScheme [TyVar] Ty deriving (Eq, Show, Ord)
+data TyScheme = TyScheme [TyVar] [UnVar] Ty deriving (Eq, Show, Ord)
     
 type TySubst = Map.Map TyVar Ty
 type TyEnv = Map.Map String TyScheme
@@ -41,8 +44,8 @@ instance Types Ty where
     apply s t           = t
     
 instance Types TyScheme where
-    ftv (TyScheme vars t)   = ftv t Set.\\ (Set.fromList vars)
-    apply s (TyScheme vars t) = TyScheme vars $ apply (foldr Map.delete s vars) t -- scoping
+    ftv (TyScheme vars _ t)   = ftv t Set.\\ (Set.fromList vars)
+    apply s (TyScheme vars _ t) = TyScheme vars [] $ apply (foldr Map.delete s vars) t -- scoping
     
 instance Types a => Types [a] where
     ftv l   = foldr Set.union Set.empty $ map ftv l
@@ -64,12 +67,12 @@ composeSubst s1 s2 = (Map.map (apply s1) s2) `Map.union` s1
 a <+> b = composeSubst a b
 
 generalize :: TyEnv -> Ty -> TyScheme
-generalize env t = TyScheme vars t
+generalize env t = TyScheme vars [] t
     where vars = Set.toList $ ftv t Set.\\ ftv env
 
 
 instantiate :: String -> TyScheme -> Ty
-instantiate prefix (TyScheme vars t) = 
+instantiate prefix (TyScheme vars _ t) = 
     let nvars = map (TyVar . (prefix ++). show) [1..]
         subst = Map.fromList $ zip vars nvars
     in apply subst t

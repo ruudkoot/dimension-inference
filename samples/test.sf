@@ -1,5 +1,7 @@
-let id = \x -> x
-  ; const = \x y -> x
+let { a -> a}
+    id = \x -> x    
+  ; { a -> b -> a }
+    const = \x y -> x 
 in const id 1.0 2.0
 ni
 

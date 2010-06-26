@@ -17,6 +17,6 @@ main::IO ()
 main = do   (file:_) <- getArgs
             inp <- readFile file
             let prog = doParse inp
-            print prog
+            putStrLn (pprint prog)
             print (infer prog)
 
