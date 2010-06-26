@@ -16,10 +16,10 @@ import Control.Applicative hiding ((<|>))
 type Parser = Parsec String ()
 
 keywords::[String]
-keywords = ["let","in","ni","true","false","fix","if","then","else","fi"]
+keywords = ["let","in","ni","True","False","fix","if","then","else","fi"]
 
 tyconsts::[String]
-tyconsts = ["bool","real"]
+tyconsts = ["Bool","Real"]
 
 unconsts::[(String,String)]
 unconsts = [("m","L")
@@ -38,10 +38,10 @@ systemFDef
    , commentLine    = "--"
    , nestedComments = True
    , identStart     = letter
-   , identLetter    = alphaNum <|> char '-' <|> char '_'
+   , identLetter    = alphaNum <|> char '_'
    , opStart        = opLetter systemFDef
    , opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
-   , reservedOpNames= ["\\","->","=","::","^","-"]
+   , reservedOpNames= ["\\","->","=","::","^","-","."]
    , reservedNames  = keywords ++ tyconsts ++ unparseconsts
    , caseSensitive  = True
    }
@@ -84,8 +84,8 @@ parseConst = Bool <$> parseBoolean
          <?> "constant"
          
 parseBoolean :: Parser Bool
-parseBoolean =  True  <$ reserved lexer "true"
-            <|> False <$ reserved lexer "false" 
+parseBoolean =  True  <$ reserved lexer "True"
+            <|> False <$ reserved lexer "False" 
             <?> "boolean"
 
 --Customized number lexer, parsec's standard number lexer is not signed, so added that
@@ -147,20 +147,21 @@ parseTyFunc = (\(v:vs) -> foldl (flip TyFun) v vs) . reverse
           <?> "Type Function"
         
 parseTyConst :: Parser TyCon
-parseTyConst = (TyBool <$  reserved lexer "bool")
-           <|> (TyReal <$> (reserved lexer "real"
+parseTyConst = (TyBool <$  reserved lexer "Bool")
+           <|> (TyReal <$> (reserved lexer "Real"
                            *> option UnUnit parseUnit))
 
 parseUnit :: Parser Un
 parseUnit = (\(x:xs) -> foldl UnProd x xs)
-        <$> braces lexer (many1 parseUnit')
+        <$> squares lexer (many1 parseUnit')
         <?> "Units"
         
 parseUnit' :: Parser Un
 parseUnit' = createUnit
          <$> (UnVar <$> parseVar 
          <|> parseUnConst) 
-         <*> option False (True <$ reservedOp lexer "-")
+         <*> (option False (True  <$ reservedOp lexer "-"
+                        <|> False <$ reservedOp lexer "^"))
          <*> option 1 (decimal lexer)
          <?> "Unit"
          where  createUnit ty neg pow = if neg 

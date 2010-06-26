@@ -1,4 +1,4 @@
-let { a -> a}
+let { a -> a }
     id = \x -> x    
   ; { a -> b -> a }
     const = \x y -> x 
