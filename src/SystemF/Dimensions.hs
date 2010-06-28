@@ -1,6 +1,7 @@
 module SystemF.Dimensions
     ( DimVars
     , DimCons
+    , UnitCons
     , Dim(..)
     , dimensions
     , NormalForm()
@@ -11,9 +12,10 @@ import           Prelude         hiding (exp)
 import qualified Data.Map as Map 
 import qualified Data.Set as Set
 
-type DimVars = String
+type DimVars  = String
 
-type DimCons = String
+type DimCons  = String
+type UnitCons = String
 
 data Dim =
       DimVars DimVars
@@ -23,7 +25,7 @@ data Dim =
     | DimInv Dim
     deriving (Eq, Ord, Show)
     
-dimensions :: [(String, String)]
+dimensions :: [(DimCons, UnitCons)]
 dimensions = [ ("L", "m" )
              , ("T", "s" )
              , ("M", "kg") ]
