@@ -21,13 +21,8 @@ keywords = ["let","in","ni","True","False","fix","if","then","else","fi"]
 tyconsts::[String]
 tyconsts = ["Bool","Real"]
 
-unconsts::[(String,String)]
-unconsts = [("m","L")
-           ,("s","T")
-           ,("kg","M")]
-
 unparseconsts :: [String]
-unparseconsts = map fst unconsts
+unparseconsts = map snd dimensions
 
 --Definitions for the lexer created by parsec, see parsec documentation 2.8/2.9 and refernce guide
 systemFDef::LanguageDef a
@@ -171,5 +166,5 @@ parseDimension' = createDimension
                 createDimensionProd ty n   = DimProd ty $ createDimensionProd ty (n-1)
          
 parseDimConst :: Parser Dim
-parseDimConst = choice $ map parseSingle unconsts
-    where  parseSingle (un,dim) = DimCons dim <$ reserved lexer un
+parseDimConst = choice $ map parseSingle dimensions
+    where  parseSingle (dim, un) = DimCons dim <$ reserved lexer un

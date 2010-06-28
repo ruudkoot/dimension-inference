@@ -11,3 +11,9 @@ data Dim =
     | DimProd Dim Dim
     | DimInv Dim
     deriving (Eq,Ord,Show)
+    
+dimensions :: [(String, String)]
+dimensions = [ ("L", "m" )
+             , ("T", "s" )
+             , ("M", "kg") ]
+
