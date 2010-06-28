@@ -6,7 +6,7 @@ import qualified Data.Map as Map
 import Data.Maybe
 
 import SystemF.Types
-import SystemF.Units
+import SystemF.Dimensions
 
 type Var = String
      
@@ -16,7 +16,7 @@ PRAGMA genlinepragmas
 
 DATA Con 
     | Bool bool:Bool
-    | Real real:Double ucon:Un
+    | Real real:Double ucon:Dim
 DERIVING Con: Eq,Ord,Show
     
 DATA Exp 
@@ -47,7 +47,7 @@ ATTR Exp [env   : TyEnv
   -}       
 SEM Con
     | Bool  lhs.tycon = TyBool
-    | Real  lhs.tycon = TyReal UnUnit
+    | Real  lhs.tycon = TyReal DimUnit
                  
 SEM Exp
     | Var Con Lam App Fix Let If

@@ -9,13 +9,13 @@ import Data.Maybe
 import Control.Monad
 import Control.Monad.State
 
-import SystemF.Units
+import SystemF.Dimensions
 
 type TyVar = String
 
 data TyCon =
       TyBool
-    | TyReal Un
+    | TyReal Dim
     deriving (Eq,Ord,Show)
 
 data Ty =
@@ -24,7 +24,7 @@ data Ty =
     | TyFun  Ty Ty          -- Function-space constructor
     deriving (Eq, Show, Ord)
 
-data TyScheme = TyScheme [TyVar] [UnVar] Ty deriving (Eq, Show, Ord)
+data TyScheme = TyScheme [TyVar] [DimVars] Ty deriving (Eq, Show, Ord)
     
 type TySubst = Map.Map TyVar Ty
 type TyEnv = Map.Map String TyScheme

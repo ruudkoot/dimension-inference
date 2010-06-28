@@ -8,7 +8,7 @@ import Text.Parsec.Prim
 
 import SystemF.Inference
 import SystemF.Types
-import SystemF.Units
+import SystemF.Dimensions
 
 import qualified Data.Map as Map
 import Control.Applicative hiding ((<|>))
@@ -80,7 +80,7 @@ parseVar = identifier lexer
 
 parseConst :: Parser Con
 parseConst = Bool <$> parseBoolean
-         <|> (flip Real) UnUnit <$> parseReal
+         <|> (flip Real) DimUnit <$> parseReal
          <?> "constant"
          
 parseBoolean :: Parser Bool
@@ -149,27 +149,27 @@ parseTyFunc = (\(v:vs) -> foldl (flip TyFun) v vs) . reverse
 parseTyConst :: Parser TyCon
 parseTyConst = (TyBool <$  reserved lexer "Bool")
            <|> (TyReal <$> (reserved lexer "Real"
-                           *> option UnUnit parseUnit))
+                           *> option DimUnit parseDimension))
 
-parseUnit :: Parser Un
-parseUnit = (\(x:xs) -> foldl UnProd x xs)
-        <$> squares lexer (many1 parseUnit')
-        <?> "Units"
+parseDimension :: Parser Dim
+parseDimension = (\(x:xs) -> foldl DimProd x xs)
+        <$> squares lexer (many1 parseDimension')
+        <?> "Dimensions"
         
-parseUnit' :: Parser Un
-parseUnit' = createUnit
-         <$> (UnVar <$> parseVar 
-         <|> parseUnConst) 
+parseDimension' :: Parser Dim
+parseDimension' = createDimension
+         <$> (DimVars <$> parseVar 
+         <|> parseDimConst) 
          <*> (option False (True  <$ reservedOp lexer "-"
                         <|> False <$ reservedOp lexer "^"))
          <*> option 1 (decimal lexer)
-         <?> "Unit"
-         where  createUnit ty neg pow = if neg 
-                                        then UnInv $ createUnitProd ty pow
-                                        else createUnitProd ty pow
-                createUnitProd ty 1   = ty
-                createUnitProd ty n   = UnProd ty $ createUnitProd ty (n-1)
+         <?> "Dimension"
+         where  createDimension ty neg pow = if neg 
+                                             then DimInv $ createDimensionProd ty pow
+                                             else createDimensionProd ty pow
+                createDimensionProd ty 1   = ty
+                createDimensionProd ty n   = DimProd ty $ createDimensionProd ty (n-1)
          
-parseUnConst :: Parser Un
-parseUnConst = choice $ map parseSingle unconsts
-    where  parseSingle (un,dim) = UnCon dim <$ reserved lexer un
+parseDimConst :: Parser Dim
+parseDimConst = choice $ map parseSingle unconsts
+    where  parseSingle (un,dim) = DimCons dim <$ reserved lexer un
