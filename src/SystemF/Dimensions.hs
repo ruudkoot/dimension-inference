@@ -30,22 +30,95 @@ dimensions = [ ("L", "m" )
              , ("T", "s" )
              , ("M", "kg") ]
 
-newtype NormalForm = NormalForm (Map.Map Dim Integer) deriving (Show)
+-- | Normal forms
 
-
+data NormalForm = NormalForm (Map.Map DimVars Integer) (Map.Map DimCons Integer) deriving (Show)
 
 nf :: Dim -> NormalForm
-nf d = NormalForm $ Set.fold (\k -> Map.insert k (exp d k)) Map.empty (base d)
-    where   base :: Dim -> Set.Set Dim
-            base  DimUnit        = Set.empty
-            base (DimProd d1 d2) = base d1 `Set.union` base d2
-            base (DimInv  d    ) = base d
-            base d               = Set.singleton d
+nf d = NormalForm (Set.fold (\k -> Map.insert k (exp d (DimVars k))) Map.empty (baseVars d))
+                  (Set.fold (\k -> Map.insert k (exp d (DimCons k))) Map.empty (baseCons d))
 
-            exp :: Dim -> Dim -> Integer
-            exp  DimUnit        _ = 0
-            exp (DimProd d1 d2) v = exp d1 v + exp d2 v
-            exp (DimInv  d    ) v = -exp d v
-            exp d               v | v == d    = 1
-                                  | otherwise = 0
+baseVars :: Dim -> Set.Set DimVars
+baseVars  DimUnit        = Set.empty
+baseVars (DimProd d1 d2) = baseVars d1 `Set.union` baseVars d2
+baseVars (DimInv  d    ) = baseVars d
+baseVars (DimVars d    ) = Set.singleton d
+baseVars (DimCons d    ) = Set.empty
 
+baseCons :: Dim -> Set.Set DimCons
+baseCons  DimUnit        = Set.empty
+baseCons (DimProd d1 d2) = baseCons d1 `Set.union` baseCons d2
+baseCons (DimInv  d    ) = baseCons d
+baseCons (DimVars d    ) = Set.empty
+baseCons (DimCons d    ) = Set.singleton d
+
+
+exp :: Dim -> Dim -> Integer
+exp  DimUnit        _ = 0
+exp (DimProd d1 d2) v = exp d1 v + exp d2 v
+exp (DimInv  d    ) v = -exp d v
+exp d               v | v == d    = 1
+                      | otherwise = 0
+                                  
+-- empty :: NormalForm -> Bool
+-- empty (NormalForm v c) = (Map.empty v) && (Map.empty c)
+
+numVars :: NormalForm -> Integer
+numVars (NormalForm v c) = toInteger $ Map.size v
+
+numCons :: NormalForm -> Integer
+numCons (NormalForm v c) = toInteger $ Map.size c
+
+varsHead :: NormalForm -> (DimVars, Integer)
+varsHead = undefined
+
+-- map a function on all dimensional constants
+consMap :: (Integer -> Integer) -> NormalForm -> Dim
+consMap = undefined
+
+-- map a fuction on all dimensional variables EXCEPT the first and all dimensional constants
+tailMap :: (Integer -> Integer) -> NormalForm -> Dim
+tailMap = undefined
+
+
+-- | Dimensional substitutions
+
+type DimSubst = Map.Map DimVars Dim
+
+idSubst :: DimSubst
+idSubst = Map.empty
+
+apply :: DimSubst -> NormalForm -> NormalForm
+apply = undefined
+
+(<+>) :: DimSubst -> DimSubst -> DimSubst
+(<+>) = undefined
+
+-- | Dimensional unification (p. 45)
+
+dimUnify :: Dim -> Dim -> Maybe DimSubst
+dimUnify d1 d2 = dimUnify' (nf (DimProd d1 (DimInv d2)))
+
+dimUnify' :: NormalForm -> Maybe DimSubst
+dimUnify' nf | numVars nf == 0 && numCons nf == 0   = Just idSubst
+             | numVars nf == 0 && numCons nf /= 0   = Nothing
+             | numVars nf == 1 && varDividesAllCons = Just complexSubst
+             | numVars nf == 1                      = Nothing
+             | otherwise                            = do u <- return complexerSubst
+                                                         s <- dimUnify' (apply u nf)
+                                                         return $ s <+> u
+    where complexSubst :: DimSubst
+          complexSubst      = let (d1, x1) = varsHead nf
+                               in Map.singleton d1 (consMap (negate . (`div` x1)) nf)
+          complexerSubst :: DimSubst
+          complexerSubst    = let (d1, x1) = varsHead nf
+                               in Map.singleton d1 (tailMap (negate . (`div` x1)) nf)
+          varDividesAllCons :: Bool
+          varDividesAllCons = let (d1, x1)            = varsHead nf
+                                  (NormalForm _ cons) = nf
+                               in allValues (\y -> y `mod` x1 == 0) cons
+
+-- | Hulp functies
+
+allValues :: (a -> Bool) -> Map.Map k a -> Bool
+allValues p m = Map.fold ((&&) . p) True m
