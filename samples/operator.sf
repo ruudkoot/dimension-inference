@@ -1,0 +1,5 @@
+let { a -> a }
+    twice = \x y z -> x + y z
+in 2
+ni
+

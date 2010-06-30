@@ -5,6 +5,8 @@ import Text.Parsec.Language
 import Text.Parsec.Token
 import Text.Parsec.Combinator
 import Text.Parsec.Prim
+import Text.Parsec.String hiding (Parser)
+import Text.ParserCombinators.Parsec.Expr
 
 import SystemF.Inference
 import SystemF.Types
@@ -12,6 +14,7 @@ import SystemF.Dimensions
 
 import qualified Data.Map as Map
 import Control.Applicative hiding ((<|>))
+import Control.Monad
 
 type Parser = Parsec String ()
 
@@ -36,11 +39,11 @@ systemFDef
    , identLetter    = alphaNum <|> char '_'
    , opStart        = opLetter systemFDef
    , opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
-   , reservedOpNames= ["\\","->","=","::","^","-","."]
+   , reservedOpNames= ["\\","->","=","::","^","-", "+", "."]
    , reservedNames  = keywords ++ tyconsts ++ unparseconsts
    , caseSensitive  = True
    }
-
+               
 --Parsec lexer
 lexer::TokenParser a
 lexer = makeTokenParser systemFDef
@@ -48,27 +51,42 @@ lexer = makeTokenParser systemFDef
 parseProgram :: String -> Either ParseError Exp
 parseProgram = parse (whiteSpace lexer *> parseExp <* eof) ""
 
+     
 parseExp :: Parser Exp
-parseExp = (\(e:es) -> foldl App e es) <$> many1 parseExp'
-       <?> "exp"
-
-parseExp' :: Parser Exp
-parseExp' = Var <$> parseVar
-        <|> Con <$> parseConst
-        <|> parseLambda
+parseExp =  parseLambda
         <|> parseLet
         <|> parseFix
         <|> parseIf
-        <|> parens lexer parseExp
+        <|> parseExpression
         <?> "exp'"
+        
+parseExpression :: Parser Exp
+parseExpression = buildExpressionParser opParsers parseFunc
 
-{-
-parseOperator :: Parser Token
-parseOperator =  choice (map parseOp gmlOperators)
-             <?> "operator"
-       where parseOp s = Operator s <$ reserved gmlLexer s
--}
+parseFunc :: Parser Exp
+parseFunc = (\(e:es) -> foldl App e es) <$> many1 parseExp'
+          
+parseExp' :: Parser Exp
+parseExp' = Con <$> parseConst
+        <|> Var <$> parseVar
+        <|> parens lexer parseExp
+        <?> "exp"
 
+--        <|> 
+        
+
+
+makeBinOp :: String -> GenParser Char () (Exp -> Exp -> Exp)
+makeBinOp op = reservedOp lexer op >> return (\arg1 arg2 -> App (App (Var op) arg1) arg2)  
+
+operators::[[String]]
+operators = [["*","/"]
+            ,["+","-"]
+            ,["and","or"]
+            ,["<",">"]]
+            
+opParsers = map (map (\x -> Infix (makeBinOp x) AssocLeft)) operators
+ 
 parseVar :: Parser Var
 parseVar = identifier lexer
         <?> "Variable"

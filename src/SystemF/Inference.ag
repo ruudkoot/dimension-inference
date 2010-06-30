@@ -27,6 +27,8 @@ DATA Exp
     | Fix exp:Exp                       -- Fixed point
     | Let var:Var val:Exp exp:Exp utype:{Maybe Ty}  -- Let-binding
     | If  cnd:Exp thn:Exp els:Exp       -- Case-statement 
+    | BinaryOperator left:Exp right:Exp
+
 
 DERIVING Exp: Eq, Show, Ord
 
@@ -113,6 +115,7 @@ SEM Exp
           exp.indent = @lhs.indent + 4
           val.indent = @lhs.indent + 4
     | If  lhs.text = undefined --cnd:Exp thn:Exp els:Exp       -- Case-statement
+    | BinaryOperator lhs.text = "(" ++ @left.text ++ " OP " ++  @right.text ++ ")"
     
 {
 nextUnique :: Int -> (Int, Int)
