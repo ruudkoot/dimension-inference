@@ -34,9 +34,9 @@ SET All = Con Exp
 
 -- | Type reconstruction
 
-ATTR Con [ dim   : Dim                    -- free dimension variable from Exp
+ATTR Con [ freshdim : Dim                    -- fresh dimension variable from Exp
          |
-         | tycon : TyCon ]
+         | tycon    : TyCon ]
 
 ATTR Exp [env   : TyEnv
          |unique: Int
