@@ -32,7 +32,11 @@ DERIVING Exp: Eq, Show, Ord
 
 SET All = Con Exp
 
-ATTR Con [||tycon : TyCon]
+-- | Type reconstruction
+
+ATTR Con [ dim   : Dim                    -- free dimension variable from Exp
+         |
+         | tycon : TyCon ]
 
 ATTR Exp [env   : TyEnv
          |unique: Int
@@ -47,12 +51,15 @@ ATTR Exp [env   : TyEnv
   -}       
 SEM Con
     | Bool  lhs.tycon = TyBool
-    | Real  lhs.tycon = TyReal DimUnit
+    | Real  lhs.tycon = if @real == 0.0
+                        then TyReal @lhs.dim
+                        else TyReal DimUnit
                  
 SEM Exp
     | Var Con Lam App Fix Let If
         loc.id : UNIQUEREF unique
-        loc.var = TyVar $ "V_" ++ show @loc.id
+        loc.var = TyVar   $ "V_" ++ show @loc.id
+        loc.dim = DimVars $ "D_" ++ show @loc.id
     
     | Var   lhs.ty  = case Map.lookup @var @lhs.env of
                         Nothing -> error $ "Unbound variable" ++ @var
@@ -83,6 +90,8 @@ SEM Exp
                                   (apply @loc.consubst @els.ty)
             +subst  = (@loc.consubst <+> @loc.blocksubst <+>)
             lhs.ty  = apply (@loc.consubst <+> @loc.blocksubst) @els.ty
+            
+-- | Pretty printing
             
 ATTR All [ indent: Int
          |
