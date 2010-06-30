@@ -52,14 +52,14 @@ ATTR Exp [env   : TyEnv
 SEM Con
     | Bool  lhs.tycon = TyBool
     | Real  lhs.tycon = if @real == 0.0
-                        then TyReal @lhs.freedim
+                        then TyReal @lhs.freshdim
                         else TyReal DimUnit
                  
 SEM Exp
     | Var Con Lam App Fix Let If
         loc.id : UNIQUEREF unique
-        loc.freevar = TyVar   $ "V_" ++ show @loc.id
-        loc.freedim = DimVars $ "D_" ++ show @loc.id
+        loc.freshvar = TyVar   $ "V_" ++ show @loc.id
+        loc.freshdim = DimVars $ "D_" ++ show @loc.id
     
     | Var   lhs.ty  = case Map.lookup @var @lhs.env of
                         Nothing -> error $ "Unbound variable" ++ @var
@@ -67,13 +67,13 @@ SEM Exp
     
     | Con   lhs.ty  = TyCon @con.tycon
     
-    | Lam   exp.env = Map.insert @var (TyScheme [] [] @loc.freevar) @lhs.env            
-            lhs.ty  = TyFun (apply @exp.subst @loc.freevar) @exp.ty
+    | Lam   exp.env = Map.insert @var (TyScheme [] [] @loc.freshvar) @lhs.env            
+            lhs.ty  = TyFun (apply @exp.subst @loc.freshvar) @exp.ty
             
     | App   exp.env = @lhs.env
             arg.env = apply @exp.subst @lhs.env            
-            loc.subst' = mgu (apply @arg.subst @exp.ty) (TyFun @arg.ty @loc.freevar)            
-            lhs.ty  = apply @loc.subst' @loc.freevar
+            loc.subst' = mgu (apply @arg.subst @exp.ty) (TyFun @arg.ty @loc.freshvar)            
+            lhs.ty  = apply @loc.subst' @loc.freshvar
             +subst  = (@loc.subst' <+>)
     
     | Let   val.env = @lhs.env
