@@ -77,6 +77,13 @@ SEM Exp
             lhs.ty  = apply @loc.subst' @loc.freshvar
             +subst  = (@loc.subst' <+>)
     
+    | Fix	exp.env = @lhs.env
+    		loc.freshvar2 =  TyVar   $ "V2_" ++ show @loc.id
+    		loc.subst' = mgu @exp.ty (TyFun @loc.freshvar2 @loc.freshvar)
+    		loc.subst'' = mgu @exp.ty (apply @loc.subst' @loc.freshvar2)
+    		lhs.ty 	= apply (@loc.subst' <+> @loc.subst'') @loc.freshvar
+    		+subst  = (@loc.subst' <+> @loc.subst'' <+>)
+    		
     | Let   val.env = @lhs.env
             exp.env = let gen  = generalize (apply @val.subst @lhs.env) @val.ty
                       in apply @val.subst $ Map.insert @var gen @lhs.env
@@ -92,6 +99,7 @@ SEM Exp
             +subst  = (@loc.consubst <+> @loc.blocksubst <+>)
             lhs.ty  = apply (@loc.consubst <+> @loc.blocksubst) @els.ty
             
+     | Fix  
 -- | Pretty printing
             
 ATTR All [ indent: Int

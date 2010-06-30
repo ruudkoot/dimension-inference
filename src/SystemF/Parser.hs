@@ -85,7 +85,8 @@ operators = [[("*",   "{ Real [a] -> Real [b] -> Real [a b] }")
             ,[("and", "{ Bool -> Bool -> Bool }")
              ,("or",  "{ Bool -> Bool -> Bool }")]
             ,[("<",   "{ Real [a] -> Real [a] -> Real [a] }")
-             ,(">",   "{ Real [a] -> Real [a] -> Real [a] }")]
+             ,(">",   "{ Real [a] -> Real [a] -> Real [a] }")
+             ,("==",  "{ a -> a -> Bool }")]
             ]
             
             -- = Map.Map String TyScheme

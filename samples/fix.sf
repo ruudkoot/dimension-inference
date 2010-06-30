@@ -1,0 +1,5 @@
+let 
+	fac = \f -> 3.0
+in 
+	fix fac
+ni  
