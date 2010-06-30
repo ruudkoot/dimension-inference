@@ -94,3 +94,4 @@ varBind :: String -> Ty -> TySubst
 varBind u t | t == TyVar u          = nullSubst
             | u `Set.member` ftv t  = error $ "Occurs check failed:" ++ u ++ " -- " ++ show t
             | otherwise             = Map.singleton u t
+

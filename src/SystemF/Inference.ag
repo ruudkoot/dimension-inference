@@ -27,7 +27,6 @@ DATA Exp
     | Fix exp:Exp                       -- Fixed point
     | Let var:Var val:Exp exp:Exp utype:{Maybe Ty}  -- Let-binding
     | If  cnd:Exp thn:Exp els:Exp       -- Case-statement 
-    | BinaryOperator left:Exp right:Exp
 
 
 DERIVING Exp: Eq, Show, Ord
@@ -115,25 +114,26 @@ SEM Exp
           exp.indent = @lhs.indent + 4
           val.indent = @lhs.indent + 4
     | If  lhs.text = undefined --cnd:Exp thn:Exp els:Exp       -- Case-statement
-    | BinaryOperator lhs.text = "(" ++ @left.text ++ " OP " ++  @right.text ++ ")"
     
 {
 nextUnique :: Int -> (Int, Int)
 nextUnique u = (u+1, u)
 
-inh::Inh_Exp
+inh:: Inh_Exp
 inh = Inh_Exp
       {env_Inh_Exp = Map.empty
       ,indent_Inh_Exp = 0
       ,unique_Inh_Exp = 0
       }
       
-infer :: Exp -> Ty
-infer e = let res   = wrap_Exp (sem_Exp e) inh
-              subst = subst_Syn_Exp res
-              ty    = ty_Syn_Exp res
-          in apply subst ty
+infer :: TyEnv -> Exp -> Ty
+infer env e = let res   = wrap_Exp (sem_Exp e) inh {env_Inh_Exp = env}
+                  subst = subst_Syn_Exp res
+                  ty    = ty_Syn_Exp res
+              in apply subst ty
           
 pprint :: Exp -> String
 pprint e = text_Syn_Exp $ wrap_Exp (sem_Exp e) inh
+
+
 }     

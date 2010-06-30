@@ -1,5 +1,5 @@
 let { a -> a }
-    twice = \x y z -> x + y z
-in 2
+    twice = \x y -> x + y
+in 3.0 + 4.0
 ni
 

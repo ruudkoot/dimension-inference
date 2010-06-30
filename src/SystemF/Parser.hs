@@ -72,21 +72,30 @@ parseExp' = Con <$> parseConst
         <|> parens lexer parseExp
         <?> "exp"
 
---        <|> 
-        
-
-
 makeBinOp :: String -> GenParser Char () (Exp -> Exp -> Exp)
 makeBinOp op = reservedOp lexer op >> return (\arg1 arg2 -> App (App (Var op) arg1) arg2)  
-
-operators::[[String]]
-operators = [["*","/"]
-            ,["+","-"]
-            ,["and","or"]
-            ,["<",">"]]
             
-opParsers = map (map (\x -> Infix (makeBinOp x) AssocLeft)) operators
- 
+opParsers = map (map (\x -> Infix (makeBinOp $ fst x) AssocLeft)) operators
+
+operators::[[(String, String)]]
+operators = [[("*",   "{ Real [a] -> Real [b] -> Real [a b] }")
+             ,("/",   "{ Real [a] -> Real [b] -> Real [a b-1] }")]
+            ,[("+",   "{ Real [a] -> Real [a] -> Real [a] }")
+             ,("-",   "{ Real [a] -> Real [a] -> Real [a] }")]
+            ,[("and", "{ Bool -> Bool -> Bool }")
+             ,("or",  "{ Bool -> Bool -> Bool }")]
+            ,[("<",   "{ Real [a] -> Real [a] -> Real [a] }")
+             ,(">",   "{ Real [a] -> Real [a] -> Real [a] }")]
+            ]
+            
+            -- = Map.Map String TyScheme
+operatorEnv :: TyEnv 
+operatorEnv = foldr addOp Map.empty.concat $ operators
+        where addOp (op,ty) ac = Map.insert op (parseT ty) ac
+              parseT s = case parse (whiteSpace lexer *> parseType <* eof) "" s of
+                           (Left e)   -> error $ "Parsing type:"++show s
+                           (Right ty) -> generalize Map.empty ty
+                           
 parseVar :: Parser Var
 parseVar = identifier lexer
         <?> "Variable"
