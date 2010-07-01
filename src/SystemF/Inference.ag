@@ -35,32 +35,34 @@ SET All = Con Exp
 
 -- | Type reconstruction
 
-ATTR Con [ freshdim : Dim                    -- fresh dimension variable from Exp
+ATTR Con [ 
          |
          | tycon    : TyCon ]
 
 ATTR Exp [env   : TyEnv
-         |unique: Int
+         |
          |subst USE {<+>} {nullSubst} : TySubst
           ty    : Ty
          ]
 
-{-ATTR All [
-         |
+ATTR All [
+         |unique: Int
          |
          ]
-  -}       
+      
 SEM Con
     | Bool  lhs.tycon = TyBool
-    | Real  lhs.tycon = if @real == 0.0
-                        then TyReal @lhs.freshdim
+    | Real  loc.id : UNIQUEREF unique
+            loc.freshdim  = DimVars $ "D_" ++ show @loc.id
+            lhs.tycon = if @real == 0.0
+                        then TyReal @loc.freshdim
                         else TyReal DimUnit
                  
 SEM Exp
     | Var Con Lam App Fix Let If
         loc.id : UNIQUEREF unique
-        loc.freshvar = TyVar   $ "V_" ++ show @loc.id
-        loc.freshdim = DimVars $ "D_" ++ show @loc.id
+        loc.freshvar  = TyVar   $ "V_" ++ show @loc.id
+        loc.freshvar2 = TyVar   $ "V2_" ++ show @loc.id
     
     | Var   lhs.ty  = case Map.lookup @var @lhs.env of
                         Nothing -> error $ "Unbound variable" ++ @var
@@ -78,7 +80,6 @@ SEM Exp
             +subst  = (@loc.subst' <+>)
     
     | Fix	exp.env = @lhs.env
-    		loc.freshvar2 =  TyVar   $ "V2_" ++ show @loc.id
     		loc.subst' = mgu @exp.ty (TyFun @loc.freshvar2 @loc.freshvar)
     		loc.subst'' = mgu @exp.ty (apply @loc.subst' @loc.freshvar2)
     		lhs.ty 	= apply (@loc.subst' <+> @loc.subst'') @loc.freshvar
@@ -98,8 +99,7 @@ SEM Exp
                                   (apply @loc.consubst @els.ty)
             +subst  = (@loc.consubst <+> @loc.blocksubst <+>)
             lhs.ty  = apply (@loc.consubst <+> @loc.blocksubst) @els.ty
-            
-     | Fix  
+ 
 -- | Pretty printing
             
 ATTR All [ indent: Int
