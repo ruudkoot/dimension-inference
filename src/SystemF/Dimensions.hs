@@ -36,7 +36,7 @@ data NormalForm = NormalForm (Map.Map DimVars Integer) (Map.Map DimCons Integer)
 
 dim :: NormalForm -> Dim
 dim (NormalForm v c) = DimProd (dim' DimVars v) (dim' DimCons c)
-    where dim' z = Map.foldWithKey (\k a b -> DimProd (pwr (z k) a) b) DimUnit
+    where dim' t = Map.foldWithKey (\k a b -> DimProd (pwr (t k) a) b) DimUnit
     
 pwr :: Dim -> Integer -> Dim
 pwr d n | n >  0 = doN (DimProd d) DimUnit n
