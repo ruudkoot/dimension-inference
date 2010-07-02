@@ -34,6 +34,18 @@ dimensions = [ ("L", "m" )
 
 data NormalForm = NormalForm (Map.Map DimVars Integer) (Map.Map DimCons Integer) deriving (Show)
 
+dim :: NormalForm -> Dim
+dim (NormalForm v c) = DimProd (dim' DimVars v) (dim' DimCons c)
+    where dim' z = Map.foldWithKey (\k a b -> DimProd (pwr (z k) a) b) DimUnit
+    
+pwr :: Dim -> Integer -> Dim
+pwr d n | n >  0 = doN (DimProd d) DimUnit n
+        | n == 0 = DimUnit
+        | n <  0 = doN (DimInv . DimProd d) DimUnit n
+        
+doN :: (a -> a) -> a -> Integer -> a
+doN f x n = doN f x (n - 1)
+
 nf :: Dim -> NormalForm
 nf d = NormalForm (Set.fold (\k -> Map.insert k (exp d (DimVars k))) Map.empty (baseVars d))
                   (Set.fold (\k -> Map.insert k (exp d (DimCons k))) Map.empty (baseCons d))
@@ -59,6 +71,8 @@ exp (DimProd d1 d2) v = exp d1 v + exp d2 v
 exp (DimInv  d    ) v = -exp d v
 exp d               v | v == d    = 1
                       | otherwise = 0
+
+
                                   
 -- empty :: NormalForm -> Bool
 -- empty (NormalForm v c) = (Map.empty v) && (Map.empty c)
@@ -70,15 +84,16 @@ numCons :: NormalForm -> Integer
 numCons (NormalForm v c) = toInteger $ Map.size c
 
 varsHead :: NormalForm -> (DimVars, Integer)
-varsHead = undefined
+varsHead (NormalForm v c) = Map.findMin v
 
--- map a function on all dimensional constants
+-- map a function on (exponents of) all dimensional constants
 consMap :: (Integer -> Integer) -> NormalForm -> Dim
-consMap = undefined
+consMap f (NormalForm v c) = dim $ NormalForm v (Map.map f c)
 
--- map a fuction on all dimensional variables EXCEPT the first and all dimensional constants
+-- map a fuction on (exponents of) all dimensional variables EXCEPT the first and all dimensional constants
 tailMap :: (Integer -> Integer) -> NormalForm -> Dim
-tailMap = undefined
+tailMap f (NormalForm v c) = let Just ((k, a), v') = Map.minViewWithKey v
+                              in dim $ NormalForm (Map.insert k a $ Map.map f v') (Map.map f c)
 
 
 -- | Dimensional substitutions
@@ -122,3 +137,4 @@ dimUnify' nf | numVars nf == 0 && numCons nf == 0   = Just idSubst
 
 allValues :: (a -> Bool) -> Map.Map k a -> Bool
 allValues p m = Map.fold ((&&) . p) True m
+
