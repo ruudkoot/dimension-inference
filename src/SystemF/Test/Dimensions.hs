@@ -19,3 +19,6 @@ instance Arbitrary Dim where
               vars = oneof $ map return [ "a", "b", "c", "d", "e" ]
               cons = oneof $ map return [ "R", "S", "T", "U", "V" ]
 
+prop_comm = \x y -> nf (DimProd x y) == nf (DimProd y x)
+prop_inv  = \x   -> nf x == nf (DimInv (DimInv x))
+prop_idem = \x   -> nf x == nf (dim (nf x))

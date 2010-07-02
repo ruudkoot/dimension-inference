@@ -6,6 +6,7 @@ module SystemF.Dimensions
     , dimensions
     , NormalForm()
     , nf
+    , dim
     ) where
 
 import           Prelude         hiding (exp)
@@ -32,7 +33,7 @@ dimensions = [ ("L", "m" )
 
 -- | Normal forms
 
-data NormalForm = NormalForm (Map.Map DimVars Integer) (Map.Map DimCons Integer) deriving (Show)
+data NormalForm = NormalForm (Map.Map DimVars Integer) (Map.Map DimCons Integer) deriving (Eq, Show)
 
 dim :: NormalForm -> Dim
 dim (NormalForm v c) = DimProd (dim' DimVars v) (dim' DimCons c)
