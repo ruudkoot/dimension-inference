@@ -117,7 +117,11 @@ mgu (TyFun l r) (TyFun l' r') = let s1 = mgu l l'
                                 in s1 <+> s2
 mgu (TyVar u)   t             = (varBind u t, nullSubst)
 mgu t           (TyVar u)     = (varBind u t, nullSubst)
-mgu (TyCon (TyReal d1)) (TyCon (TyReal d2)) = (nullSubst, fromJust $ dimUnify d1 d2)
+mgu (TyCon (TyReal d1)) (TyCon (TyReal d2)) = 
+                                case dimUnify d1 d2 of
+                                    Nothing -> error $ "Error unifiying dimensions" ++show d1++" -- " ++ show d2 ++ show (dim2nf (DimProd d1 (DimInv d2)))
+                                    Just u  -> (nullSubst, u)
+                                
 mgu (TyCon a)   (TyCon b)     = if a == b 
                                 then nullSubst
                                 else error $ "Constants don't unify: " ++ show a ++ " vs " ++ show b
@@ -128,6 +132,8 @@ varBind :: String -> Ty -> TySubst
 varBind u t | t == TyVar u          = nullSubst
             | u `Set.member` ftv t  = error $ "Occurs check failed:" ++ u ++ " -- " ++ show t
             | otherwise             = Map.singleton u t
+
+-- | Show instances
 
 instance Show TyCon where
     show TyBool = "Bool"

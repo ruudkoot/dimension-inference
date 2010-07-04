@@ -18,6 +18,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe
 
+import Debug.Trace
+
 import SystemF.Substitution
 
 type DimVar  = String
@@ -88,9 +90,11 @@ nf2dim (NormalForm v c) = DimProd (dim' DimVar v) (dim' DimCons c)
     where dim' t = Map.foldWithKey (\k v ac -> DimProd (pwr (t k) v) ac) DimUnit
 
 dim2nf :: Dim -> NormalForm
-dim2nf d = NormalForm (Set.fold (\k -> Map.insert k (exp d (DimVar k))) Map.empty (fdv d))
-                      (Set.fold (\k -> Map.insert k (exp d (DimCons k))) Map.empty (dimConsts d))
-    
+dim2nf d = NormalForm (Set.fold (\k -> addNotZero (exp d (DimVar k)) k) Map.empty (fdv d))
+                      (Set.fold (\k -> addNotZero (exp d (DimCons k)) k) Map.empty (dimConsts d))
+    where addNotZero 0 k ac = ac
+          addNotZero n k ac = Map.insert k n ac
+          
 pwr :: Dim -> Integer -> Dim
 pwr d n | n >  0 = doN (DimProd d) DimUnit n
         | n == 0 = DimUnit
@@ -112,14 +116,17 @@ varsHead :: NormalForm -> (DimVar, Integer)
 varsHead (NormalForm v c) = Map.findMin v
 
 -- map a function on (exponents of) all dimensional constants
-consMap :: (Integer -> Integer) -> NormalForm -> Dim
-consMap f (NormalForm v c) = nf2dim $ NormalForm v (Map.map f c)
+consMap :: (Integer -> Integer) -> NormalForm -> NormalForm
+consMap f (NormalForm v c) = NormalForm v (Map.map f c)
 
 -- map a fuction on (exponents of) all dimensional variables EXCEPT the first and all dimensional constants
 tailMap :: (Integer -> Integer) -> NormalForm -> Dim
 tailMap f (NormalForm v c) = let Just ((k, a), v') = Map.minViewWithKey v
                              in nf2dim $ NormalForm (Map.insert k a $ Map.map f v') (Map.map f c)
-                             
+
+onlyCons :: NormalForm -> NormalForm
+onlyCons (NormalForm _ c) = NormalForm Map.empty c
+
 -- | Dimensional substitutions
 
 type DimSubst = Map.Map DimVar Dim
@@ -143,7 +150,8 @@ dimUnify' nf | numVars nf == 0 && numCons nf == 0   = Just nullSubst
                                                          return $ s <+> u
     where complexSubst :: DimSubst
           complexSubst      = let (d1, x1) = varsHead nf
-                               in Map.singleton d1 (consMap (negate . (`div` x1)) nf)
+                              in Map.singleton d1 . nf2dim . onlyCons . consMap (negate . (`div` x1)) $ nf
+
           complexerSubst :: DimSubst
           complexerSubst    = let (d1, x1) = varsHead nf
                                in Map.singleton d1 (tailMap (negate . (`div` x1)) nf)
