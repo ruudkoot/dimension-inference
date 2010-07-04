@@ -40,7 +40,7 @@ systemFDef
    , opStart        = opLetter systemFDef
    , opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
    , reservedOpNames= ["\\","->","=","::","^","-", "+", "."]
-   , reservedNames  = keywords ++ tyconsts ++ unparseconsts
+   , reservedNames  = keywords ++ tyconsts
    , caseSensitive  = True
    }
                
@@ -181,8 +181,8 @@ parseDimension = (\(x:xs) -> foldl DimProd x xs)
         
 parseDimension' :: Parser Dim
 parseDimension' = createDimension
-         <$> (DimVar <$> parseVar 
-         <|> parseDimConst) 
+         <$> (parseDimConst
+         <|> DimVar <$> parseVar) 
          <*> (option False (True  <$ reservedOp lexer "-"
                         <|> False <$ reservedOp lexer "^"))
          <*> option 1 (decimal lexer)
@@ -195,4 +195,4 @@ parseDimension' = createDimension
          
 parseDimConst :: Parser Dim
 parseDimConst = choice $ map parseSingle dimensions
-    where  parseSingle (dim, un) = DimCons dim <$ reserved lexer un
+    where  parseSingle (dim, un) = DimCons dim <$ symbol lexer un

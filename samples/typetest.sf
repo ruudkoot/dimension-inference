@@ -1,5 +1,9 @@
-let { Real [kg] -> Real [m s-2] -> Real [kg m s-2] }
-    fma = (\x y -> x * y)
-in fma --2.0 4.0
+let  { Real [kg] -> Real [m s-2] -> Real [kg m s-2] }
+     force = (\m ac -> m * ac)
+{-   ; { Real [m s-1] -> Real [s] -> Real [m] }
+     dist = (\v t -> v * t)
+   ; { Real [m s-2] -> Real [s] -> Real [m s-1] }
+     speed = (\ac t -> ac * t) -}
+in force --2.0 4.0
 ni
 

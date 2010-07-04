@@ -31,7 +31,7 @@ data Dim =
     | DimUnit
     | DimProd Dim Dim
     | DimInv Dim
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord)
 
 class Dimensions a where
     fdv :: a -> Set.Set DimVar   
@@ -74,7 +74,7 @@ dimensions = [ ("L", "m" )
 
 -- | Normal forms
 
-data NormalForm = NormalForm (Map.Map DimVar Integer) (Map.Map DimCons Integer) deriving (Eq, Show)
+data NormalForm = NormalForm (Map.Map DimVar Integer) (Map.Map DimCons Integer) deriving Eq
 
 instance Dimensions NormalForm where
     fdv (NormalForm vs _) = Map.keysSet vs
@@ -157,3 +157,12 @@ dimUnify' nf | numVars nf == 0 && numCons nf == 0   = Just nullSubst
 allValues :: (a -> Bool) -> Map.Map k a -> Bool
 allValues p m = Map.fold ((&&) . p) True m
 
+instance Show Dim where
+    show = show . dim2nf 
+    
+instance Show NormalForm where
+    show (NormalForm vars cons) = "["++show' vars++show' cons++"]"
+        where showPow v n | n == 0 = ""
+                          | n < 0  = v ++ show n
+                          | otherwise = v ++ "^" ++ show n
+              show' m = Map.foldWithKey (\k v ac -> showPow k v ++ ac) "" m

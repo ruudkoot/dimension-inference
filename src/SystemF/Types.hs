@@ -12,18 +12,20 @@ import Control.Monad.State
 import SystemF.Dimensions
 import SystemF.Substitution
 
+import Debug.Trace
+
 type TyVar = String
 
 data TyCon =
       TyBool
     | TyReal Dim
-    deriving (Eq,Ord,Show)
+    deriving (Eq,Ord)
 
 data Ty =
       TyVar  TyVar          -- Type variables
     | TyCon  TyCon          -- Type constants
     | TyFun  Ty Ty          -- Function-space constructor
-    deriving (Eq, Show, Ord)
+    deriving (Eq, Ord)
 
 data TyScheme = TyScheme [TyVar] [DimVar] Ty deriving (Eq, Show, Ord)
     
@@ -108,6 +110,7 @@ instantiate prefix (TyScheme vars dims t) =
     in apply (tsubst,dsubst) t
 
 -- | Unification
+
 mgu :: Ty -> Ty -> Subst
 mgu (TyFun l r) (TyFun l' r') = let s1 = mgu l l'
                                     s2 = mgu (apply s1 r) (apply s1 r')
@@ -125,4 +128,13 @@ varBind :: String -> Ty -> TySubst
 varBind u t | t == TyVar u          = nullSubst
             | u `Set.member` ftv t  = error $ "Occurs check failed:" ++ u ++ " -- " ++ show t
             | otherwise             = Map.singleton u t
+
+instance Show TyCon where
+    show TyBool = "Bool"
+    show (TyReal d) = "Real "++show d
+
+instance Show Ty where    
+    show (TyVar v) = v     
+    show (TyCon c) = show c
+    show (TyFun t1 t2) = "(" ++ show t1 ++ " -> " ++ show t2 ++ ")"
 
