@@ -1,5 +1,5 @@
-let { Real [a^2b-3] -> Real [a] }
-    sum = \x y -> x     
-in 2.0
+let { Real [kg] -> Real [m s-2] -> Real [kg m s-2] }
+    fma = (\x y -> x * y)
+in fma --2.0 4.0
 ni
 

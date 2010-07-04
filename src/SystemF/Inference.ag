@@ -7,6 +7,7 @@ import Data.Maybe
 
 import SystemF.Types
 import SystemF.Dimensions
+import SystemF.Substitution
 
 type Var = String
      
@@ -26,7 +27,7 @@ DATA Exp
     | App exp:Exp arg:Exp               -- Application
     | Fix exp:Exp                       -- Fixed point
     | Let var:Var val:Exp exp:Exp utype:{Maybe Ty}  -- Let-binding
-    | If  cnd:Exp thn:Exp els:Exp       -- Case-statement 
+    | If  cnd:Exp thn:Exp els:Exp       -- If-statement 
 
 
 DERIVING Exp: Eq, Show, Ord
@@ -41,7 +42,7 @@ ATTR Con [
 
 ATTR Exp [env   : TyEnv
          |
-         |subst USE {<+>} {nullSubst} : TySubst
+         |subst USE {<+>} {nullSubst} : Subst
           ty    : Ty
          ]
 
@@ -53,7 +54,7 @@ ATTR All [
 SEM Con
     | Bool  lhs.tycon = TyBool
     | Real  loc.id : UNIQUEREF unique
-            loc.freshdim  = DimVars $ "D_" ++ show @loc.id
+            loc.freshdim  = DimVar $ "D_" ++ show @loc.id
             lhs.tycon = if @real == 0.0
                         then TyReal @loc.freshdim
                         else TyReal DimUnit
@@ -86,7 +87,10 @@ SEM Exp
     		+subst  = (@loc.subst' <+> @loc.subst'' <+>)
     		
     | Let   val.env = @lhs.env
-            exp.env = let gen  = generalize (apply @val.subst @lhs.env) @val.ty
+            exp.env = let ltype = case @utype of
+                                    Nothing -> @val.ty
+                                    Just ut -> ut
+                          gen = generalize (apply @val.subst @lhs.env) ltype
                       in apply @val.subst $ Map.insert @var gen @lhs.env
             lhs.ty  = @exp.ty            
 

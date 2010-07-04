@@ -181,7 +181,7 @@ parseDimension = (\(x:xs) -> foldl DimProd x xs)
         
 parseDimension' :: Parser Dim
 parseDimension' = createDimension
-         <$> (DimVars <$> parseVar 
+         <$> (DimVar <$> parseVar 
          <|> parseDimConst) 
          <*> (option False (True  <$ reservedOp lexer "-"
                         <|> False <$ reservedOp lexer "^"))

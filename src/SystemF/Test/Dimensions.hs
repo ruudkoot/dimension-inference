@@ -7,10 +7,10 @@ import SystemF.Dimensions
 instance Arbitrary Dim where
     arbitrary = sized tree
         where tree 0 = oneof [ return DimUnit
-                             , liftM  DimVars vars
+                             , liftM  DimVar vars
                              , liftM  DimCons cons      ]
               tree n = oneof [ return DimUnit
-                             , liftM  DimVars arbitrary
+                             , liftM  DimVar arbitrary
                              , liftM  DimCons arbitrary
                              , liftM  DimInv  sub1
                              , liftM2 DimProd sub2 sub2 ]
@@ -19,6 +19,6 @@ instance Arbitrary Dim where
               vars = oneof $ map return [ "a", "b", "c", "d", "e" ]
               cons = oneof $ map return [ "R", "S", "T", "U", "V" ]
 
-prop_comm = \x y -> nf (DimProd x y) == nf (DimProd y x)
-prop_inv  = \x   -> nf x == nf (DimInv (DimInv x))
-prop_idem = \x   -> nf x == nf (dim (nf x))
+prop_comm = \x y -> dim2nf (DimProd x y) == dim2nf (DimProd y x)
+prop_inv  = \x   -> dim2nf x == dim2nf (DimInv (DimInv x))
+prop_idem = \x   -> dim2nf x == dim2nf (nf2dim (dim2nf x))
