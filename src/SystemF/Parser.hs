@@ -102,11 +102,11 @@ parseVar = identifier lexer
         <?> "Variable"
 
 parseConst :: Parser Con
-parseConst = (\value dim -> Real value dim)
-         <$> parseReal
-         <*> option DimUnit parseDimension  
+parseConst = createReal <$> parseReal <*> option DimUnit parseDimension  
          <|> Bool <$> parseBoolean
          <?> "constant"
+         where 
+                createReal value dim = Real value dim
 
 parseBoolean :: Parser Bool
 parseBoolean =  True  <$ reserved lexer "True"
