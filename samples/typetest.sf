@@ -4,9 +4,9 @@ let  { Real [kg] -> Real [m s-2] -> Real [kg m s-2] }
      dist = (\v t -> v * t)
    ; { Real [m s-2] -> Real [s] -> Real [m s-1] }
      speed = (\ac t -> ac * t)
-   ; { Real [a] } weight = 2.0
-   ; { Real [s]  } time   = 1.0
-   ; { Real [m]  } length = 3.0
-in force weight (length / (time * time))
+   ; { Real [kg] } weight = 2.0
+   ; { Real [s] }  time   = 1.0
+   ; length = 3.0 [m]
+in force weight (length / (time * 1.0 [s]))
 ni
 

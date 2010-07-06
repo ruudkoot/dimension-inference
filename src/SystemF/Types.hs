@@ -86,6 +86,15 @@ instance Substitution TySubst where
 
 type Subst = (TySubst, DimSubst)
 
+{-
+HE: Moet er niet een Substitution zijn voor Subst?
+In "mgu (TyCon a) (TyCon b)" wordt er namelijk een nullSubst terug gegeven
+maar het verwachte resultaat type van mgu is Subst?   
+
+instance Substitution Subst where 
+    nullSubst = (nullSubst, nullSubst)
+-}
+
 tSubst :: Subst -> TySubst
 tSubst = fst
 
@@ -119,11 +128,12 @@ mgu (TyVar u)   t             = (varBind u t, nullSubst)
 mgu t           (TyVar u)     = (varBind u t, nullSubst)
 mgu (TyCon (TyReal d1)) (TyCon (TyReal d2)) = 
                                 case dimUnify d1 d2 of
-                                    Nothing -> error $ "Error unifiying dimensions" ++show d1++" -- " ++ show d2 ++ show (dim2nf (DimProd d1 (DimInv d2)))
-                                    Just u  -> (nullSubst, u)
+                                    Nothing -> error $ "Error unifiying dimensions" ++show d1++" -- " ++ show d2 ++  show (dim2nf (DimProd d1 (DimInv d2)))
+                                    Just u  -> trace ("Unified " ++ show d1 ++ " -- " ++ show d2 ++ " : " ++ show u) (nullSubst, u)
                                 
 mgu (TyCon a)   (TyCon b)     = if a == b 
-                                then nullSubst
+                                -- then nullSubst
+                                then (nullSubst, nullSubst)
                                 else error $ "Constants don't unify: " ++ show a ++ " vs " ++ show b
 mgu t1          t2            = error $ "Types don't unify: " ++ show t1 ++ " vs " ++ show t2
 

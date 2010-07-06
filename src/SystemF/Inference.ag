@@ -55,9 +55,11 @@ SEM Con
     | Bool  lhs.tycon = TyBool
     | Real  loc.id : UNIQUEREF unique
             loc.freshdim  = DimVar $ "D_" ++ show @loc.id
-            lhs.tycon = if @real == 0.0
-                        then TyReal @loc.freshdim
-                        else TyReal DimUnit
+            lhs.tycon = TyReal @ucon 
+            			-- HE: Waarom is er ander gedrag als de waarde 0.0?
+            			-- if @real == 0.0
+                        -- then TyReal @loc.freshdim
+                        -- else TyReal @ucon
                  
 SEM Exp
     | Var Con Lam App Fix Let If
