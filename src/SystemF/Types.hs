@@ -66,16 +66,39 @@ instance Dimensions Ty where
     fdv (TyFun l r)        = fdv l `Set.union` fdv r
     fdv _                  = Set.empty
     
+    simplify env (TyFun l r)   = let u1 = simplify env l
+                                     u2 = simplify (fdv (applyDimSubst u1 l) `Set.union` env) r
+                                 in u2 <+> u1
+    simplify env (TyCon (TyReal d)) = simplify env d
+    simplify _   _                = nullSubst                                   
+    
     applyDimSubst s (TyCon (TyReal d)) = TyCon $ TyReal $ applyDimSubst s d
     applyDimSubst s (TyFun l r)        = TyFun (applyDimSubst s l) (applyDimSubst s r)
     applyDimSubst _ t                  = t
 
 instance Dimensions TyScheme where
     fdv (TyScheme _ dims t)   = fdv t Set.\\ (Set.fromList dims)
+    
     applyDimSubst s (TyScheme vars dims t) = TyScheme vars dims $ applyDimSubst (foldr Map.delete s dims) t -- scoping
 
+simplifyScheme :: TyScheme -> TyScheme
+simplifyScheme (TyScheme vars dims t) = 
+        let env = fdv t Set.\\ Set.fromList dims
+            u = simplify env t
+            nt = applyDimSubst u t
+            ndims = Set.toList $ fdv nt Set.\\ env
+        in TyScheme vars ndims nt
+    
 instance Dimensions TyEnv where
-    fdv env     = fdv (Map.elems env)  
+    fdv env     = fdv (Map.elems env)
+    
+    simplify v env = cofb v (Map.toList env)
+        where cofb v []       = nullSubst
+              cofb v ((x,TyScheme vars dims t):xs) =
+                      let u1 = simplify (v `Set.union` Set.fromList dims) t
+                          u2 = cofb (v `Set.union` fdv (applyDimSubst u1 (TyScheme vars dims t))) xs
+                      in u2 <+> u1
+                         
     applyDimSubst s env = Map.map (applyDimSubst s) env
 
 -- | Substitution instance for TySubst
@@ -85,15 +108,6 @@ instance Substitution TySubst where
     a <+> b = (Map.map (applyTSubst a) b) `Map.union` a
 
 type Subst = (TySubst, DimSubst)
-
-{-
-HE: Moet er niet een Substitution zijn voor Subst?
-In "mgu (TyCon a) (TyCon b)" wordt er namelijk een nullSubst terug gegeven
-maar het verwachte resultaat type van mgu is Subst?   
-
-instance Substitution Subst where 
-    nullSubst = (nullSubst, nullSubst)
--}
 
 tSubst :: Subst -> TySubst
 tSubst = fst
@@ -106,10 +120,14 @@ apply (ts, ds) = applyDimSubst ds . applyTSubst ts
 
 -- | Auxiliary functions    
 generalize :: TyEnv -> Ty -> TyScheme
-generalize env t = TyScheme vars dims t
+generalize env t = applyDimSubst uinv $ TyScheme vars dimvars nt
     where vars = Set.toList $ ftv t Set.\\ ftv env
-          dims = Set.toList $ fdv t Set.\\ fdv env
-
+          u = simplify Set.empty env
+          nenv = applyDimSubst u env
+          nt = applyDimSubst u t
+          dimvars = Set.toList $ fdv nt Set.\\ fdv nenv
+          uinv = invSubst u
+          
 instantiate :: String -> TyScheme -> Ty
 instantiate prefix (TyScheme vars dims t) = 
     let ntvars = map (TyVar . ((prefix ++ "T_") ++). show) [1..]
@@ -132,8 +150,7 @@ mgu (TyCon (TyReal d1)) (TyCon (TyReal d2)) =
                                     Just u  -> trace ("Unified " ++ show d1 ++ " -- " ++ show d2 ++ " : " ++ show u) (nullSubst, u)
                                 
 mgu (TyCon a)   (TyCon b)     = if a == b 
-                                -- then nullSubst
-                                then (nullSubst, nullSubst)
+                                then nullSubst
                                 else error $ "Constants don't unify: " ++ show a ++ " vs " ++ show b
 mgu t1          t2            = error $ "Types don't unify: " ++ show t1 ++ " vs " ++ show t2
 

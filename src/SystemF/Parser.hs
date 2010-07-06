@@ -185,13 +185,10 @@ parseDimension' :: Parser Dim
 parseDimension' = createDimension
          <$> (parseDimConst
          <|> DimVar <$> parseVar) 
-         <*> (option False (True  <$ reservedOp lexer "-"
-                        <|> False <$ reservedOp lexer "^"))
-         <*> option 1 (decimal lexer)
+         <*> option 1 (integer lexer)
          <?> "Dimension"
-         where  createDimension ty neg pow = if neg 
-                                             then DimInv $ createDimensionProd ty pow
-                                             else createDimensionProd ty pow
+         where  createDimension ty pow | pow < 0   = DimInv $ createDimensionProd ty (-pow)
+                                       | otherwise = createDimensionProd ty pow
                 createDimensionProd ty 1   = ty
                 createDimensionProd ty n   = DimProd ty $ createDimensionProd ty (n-1)
          

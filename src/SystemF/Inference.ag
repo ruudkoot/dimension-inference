@@ -89,7 +89,7 @@ SEM Exp
     | Let   val.env = @lhs.env
             exp.env = let ltype = case @utype of
                                     Nothing -> @val.ty
-                                    Just ut -> ut
+                                    Just ut -> ut	
                           gen = generalize (apply @val.subst @lhs.env) ltype
                       in apply @val.subst $ Map.insert @var gen @lhs.env
             lhs.ty  = @exp.ty            

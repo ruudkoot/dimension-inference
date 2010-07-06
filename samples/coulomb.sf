@@ -1,0 +1,9 @@
+let  
+	  G = 6.67428 [m+3 kg-1 s-2]
+	; -- { Real [kg] -> Real [kg] -> Real [m] -> Real [kg m s-2] }
+	  gforce = \m1 m2 r -> G * m1 * m2 / (r * r)
+	
+in 
+	gforce 1.0 [kg] 2.0 [kg] 100.0 [m]
+ni
+
