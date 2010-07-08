@@ -1,0 +1,27 @@
+
+Wat we gedaan hebben:
+Het onderdeel dat nog miste is het generalizen en simplify-en van dimensies (2.4 en 3.3)
+Dit hebben we inegbouwd, maar voor het generalizen van dimensie-expressies zijn invertible substituties
+nodig. Henk-Erik en ik hebben hier een naive en incorrecte implementatie voor gemaakt, maar die moet hierzien worden.
+Het paper ging nergens in op het inverteren van substituties, voor zover ik kon zien.
+
+Nog te doen:
+
+*Fixen substituties:
+Henk-Erik en ik hadden bedacht dat het misscihen het makkelijkst is om gelijk met de opbouw van de substitutie
+in dimSimplif', ook de inverse van deze subtitutie op te bouwen. Een andere mogelijkheid is het inverteren van de dimensie
+matrix van een substitutie, maar dit vergt meer code.
+
+*Testprogramma's
+Een groot testprogramma, inclusief funties met dimensie-variabelen(niet alleen constanten).
+
+*Documentatie
+Het geheel moet nog gedocumenteerd worden. Hoeft wederom niet veel te zijn maar misschien iets meer dan vorige keer
+aangezien we hier de punten aftrek op hebben gekregen van Jur bij de vorige opdracht.
+Aangezien we netjes het paper hebben gevolgd is dit makkelijker dan bij de vorige opdracht denk ik, er kan veel
+worden gerefereerd aan stukken in de paper en waar deze in ons systeem terug te vinden zijn.
+
+*Optioneel, type-checking op let-bindings:
+Wat niet echt netjes is, is dat door de gebruiker geannoteerde expressies in let-bindings niet worden gechecked met het
+geinfereerde type voor deze let-bindings. Henk-Erik en ik kwamen erachter dat dit niet geheel triviaal is, aangezien het geinfereerde
+type wel generieker, maar niet specifieker mag zijn dan het door de gebruiker gedefinieerde type.
