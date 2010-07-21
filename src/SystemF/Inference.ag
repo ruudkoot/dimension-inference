@@ -21,13 +21,13 @@ DATA Con
 DERIVING Con: Eq,Ord,Show
     
 DATA Exp 
-    | Var var:Var                       -- Variables
-    | Con con:Con                       -- Constants
-    | Lam var:Var exp:Exp               -- Lambda-abstraction
-    | App exp:Exp arg:Exp               -- Application
-    | Fix exp:Exp                       -- Fixed point
+    | Var var:Var                                   -- Variables
+    | Con con:Con                                   -- Constants
+    | Lam var:Var exp:Exp                           -- Lambda-abstraction
+    | App exp:Exp arg:Exp                           -- Application
+    | Fix exp:Exp                                   -- Fixed point
     | Let var:Var val:Exp exp:Exp utype:{Maybe Ty}  -- Let-binding
-    | If  cnd:Exp thn:Exp els:Exp       -- If-statement 
+    | If  cnd:Exp thn:Exp els:Exp                   -- If-statement 
 
 
 DERIVING Exp: Eq, Show, Ord
@@ -55,7 +55,7 @@ SEM Con
     | Bool  lhs.tycon = TyBool
     | Real  loc.id : UNIQUEREF unique
             loc.freshdim  = DimVar $ "D_" ++ show @loc.id
-            lhs.tycon = if @real == 0.0
+            lhs.tycon = if @real == 0.0  {- Real 0.0 is dimensionally polymorphic (1.3) -}
                         then TyReal @loc.freshdim
                         else TyReal @ucon
                  

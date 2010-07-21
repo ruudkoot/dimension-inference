@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module SystemF.Dimensions
     {-( DimVar
     , DimCons
@@ -11,55 +12,45 @@ module SystemF.Dimensions
     , DimSubst
     , Dimensions(..)
     , dimUnify
-    ) -}where
+    ) -} where
 
-import           Prelude         hiding (exp)
-import qualified Data.Map as Map 
-import qualified Data.Set as Set
-import Data.Maybe
-import Data.List as List
+import           Prelude            hiding (exp)
+import           Data.Maybe
+import           Data.List  as List
+import qualified Data.Map   as Map 
+import qualified Data.Set   as Set
 
 import Debug.Trace
 
 import SystemF.Substitution
 
-type DimVar  = String
-
+-- | Dimensions (2.1)
+ 
+type DimVar   = String
 type DimCons  = String
 type UnitCons = String
 
-data Dim =
-      DimVar DimVar
-    | DimCons DimCons
-    | DimUnit
-    | DimProd Dim Dim
-    | DimInv Dim
-    deriving (Eq, Ord)
+data Dim = DimVar  DimVar   -- dimension variables
+         | DimCons DimCons  -- base dimensions
+         | DimUnit          -- unit dimension
+         | DimProd Dim Dim  -- dimension product
+         | DimInv  Dim      -- dimension inverse
+         deriving (Eq, Ord)
+         
+-- | Base Dimensions and Units
 
-class Dimensions a where
-    fdv :: a -> Set.Set DimVar   
-    simplify :: Set.Set DimVar -> a -> DimSubst
-    applyDimSubst :: DimSubst -> a -> a
+dimensions :: [(DimCons, UnitCons)]
+dimensions = [ ("L", "m" )
+             , ("T", "s" )
+             , ("M", "kg") ]
 
-instance Dimensions a => Dimensions [a] where
-    fdv l   = foldr Set.union Set.empty $ map fdv l
-    --simplify env = map (simplify env)
-    applyDimSubst s = map (applyDimSubst s)
-    
-instance Dimensions Dim where
-    fdv  DimUnit        = Set.empty
-    fdv (DimProd d1 d2) = fdv d1 `Set.union` fdv d2
-    fdv (DimInv  d    ) = fdv d
-    fdv (DimVar d    ) = Set.singleton d
-    fdv (DimCons d    ) = Set.empty
+-- | Normal forms (2.1)
 
-    applyDimSubst s (DimVar v)  = fromMaybe (DimVar v) $ Map.lookup v s
-    applyDimSubst s (DimProd d1 d2) = DimProd (applyDimSubst s d1) (applyDimSubst s d2)
-    applyDimSubst s (DimInv d)  = DimInv (applyDimSubst s d)
-    applyDimSubst _ d           = d
-   
-    simplify = dimSimplify
-          
+data NormalForm = NormalForm { vars :: Map.Map DimVar  Integer
+                             , cons :: Map.Map DimCons Integer } deriving (Eq)
+
+-- | Converting between forms
+
 dimConsts :: Dim -> Set.Set DimCons 
 dimConsts  DimUnit        = Set.empty
 dimConsts (DimProd d1 d2) = dimConsts d1 `Set.union` dimConsts d2
@@ -67,41 +58,6 @@ dimConsts (DimInv  d    ) = dimConsts d
 dimConsts (DimVar d    ) = Set.empty
 dimConsts (DimCons d    ) = Set.singleton d
 
-exp :: Dim -> Dim -> Integer    
-exp  DimUnit        _ = 0
-exp (DimProd d1 d2) v = exp d1 v + exp d2 v
-exp (DimInv  d    ) v = -exp d v
-exp d               v | v == d    = 1
-                      | otherwise = 0    
-                      
-dimensions :: [(DimCons, UnitCons)]
-dimensions = [ ("L", "m" )
-             , ("T", "s" )
-             , ("M", "kg") ]
-
-                               
--- | Dimensional substitutions
-
-type DimSubst = Map.Map DimVar Dim
-
-instance Substitution DimSubst where
-    nullSubst = Map.empty
-    a <+> b = (Map.map (applyDimSubst a) b) `Map.union` a
--- | Normal forms
-
-data NormalForm = NormalForm 
-        { vars :: (Map.Map DimVar Integer)
-        , cons :: (Map.Map DimCons Integer)
-        } deriving (Eq)
-
-instance Dimensions NormalForm where
-    fdv (NormalForm vs _) = Map.keysSet vs
-    simplify env = simplify env . nf2dim
-    applyDimSubst s = dim2nf . applyDimSubst s . nf2dim
-
-
--- | Converting between forms
-    
 nf2dim :: NormalForm -> Dim
 nf2dim (NormalForm v c) = DimProd (dim' DimVar v) (dim' DimCons c)
     where dim' t = Map.foldWithKey (\k v ac -> DimProd (pwr (t k) v) ac) DimUnit
@@ -120,7 +76,54 @@ pwr d n | n >  0 = doN (DimProd d) DimUnit n
 doN :: (a -> a) -> a -> Integer -> a
 doN f x n | n <= 0    = x
           | otherwise = f $ doN f x (n - 1)
-                                  
+
+-- | Dimensional substitutions
+
+type DimSubst = Map.Map DimVar Dim
+
+instance Substitution DimSubst where
+    nullSubst = Map.empty
+    a <+> b   = (Map.map (applyDimSubst a) b) `Map.union` a
+
+-- | Functions on dimensions
+
+exp :: Dim -> Dim -> Integer    
+exp  DimUnit        _ = 0
+exp (DimProd d1 d2) v = exp d1 v + exp d2 v
+exp (DimInv  d    ) v = -exp d v
+exp d               v | v == d    = 1
+                      | otherwise = 0
+
+class Dimensions a where
+    fdv           :: a -> Set.Set DimVar   
+    simplify      :: Set.Set DimVar -> a -> DimSubst
+    applyDimSubst :: DimSubst -> a -> a
+
+instance Dimensions Dim where
+    fdv  DimUnit        = Set.empty
+    fdv (DimProd d1 d2) = fdv d1 `Set.union` fdv d2
+    fdv (DimInv  d    ) = fdv d
+    fdv (DimVar  d    ) = Set.singleton d
+    fdv (DimCons d    ) = Set.empty
+
+    applyDimSubst s (DimVar v)      = fromMaybe (DimVar v) $ Map.lookup v s
+    applyDimSubst s (DimProd d1 d2) = DimProd (applyDimSubst s d1) (applyDimSubst s d2)
+    applyDimSubst s (DimInv d)      = DimInv (applyDimSubst s d)
+    applyDimSubst _ d               = d
+   
+    simplify = dimSimplify
+
+instance Dimensions NormalForm where
+    fdv (NormalForm vs _) = Map.keysSet vs
+    simplify env          = simplify env . nf2dim
+    applyDimSubst s       = dim2nf . applyDimSubst s . nf2dim
+
+instance Dimensions a => Dimensions [a] where
+    fdv l           = foldr Set.union Set.empty $ map fdv l
+    --simplify env    = map (simplify env)
+    applyDimSubst s = map (applyDimSubst s)
+
+
 -- | Auxiliary function on normal form
 
 deleteVar :: DimVar -> NormalForm -> NormalForm
@@ -230,6 +233,7 @@ invSubst = Map.mapWithKey invert
               invert k d | isInverse = d
                          | otherwise = (DimProd (DimVar k)) . DimInv . nf2dim . deleteVar k . dim2nf $ d 
                         where isInverse = NormalForm (Map.singleton k (-1)) Map.empty == dim2nf d
+
 instance Show Dim where
     show = show . dim2nf 
   
