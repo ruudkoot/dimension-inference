@@ -20,8 +20,9 @@ import           Data.List  as List
 import qualified Data.Map   as Map 
 import qualified Data.Set   as Set
 
-import Debug.Trace
+-- import Debug.Trace
 
+import SystemF.Matrix
 import SystemF.Substitution
 
 -- | Dimensions (2.1)
@@ -37,6 +38,9 @@ data Dim = DimVar  DimVar   -- dimension variables
          | DimInv  Dim      -- dimension inverse
          deriving (Eq, Ord)
          
+instance Show Dim where
+    show = show . dim2nf 
+         
 -- | Base Dimensions and Units
 
 dimensions :: [(DimCons, UnitCons)]
@@ -48,6 +52,13 @@ dimensions = [ ("L", "m" )
 
 data NormalForm = NormalForm { vars :: Map.Map DimVar  Integer
                              , cons :: Map.Map DimCons Integer } deriving (Eq)
+                             
+instance Show NormalForm where
+    show (NormalForm vars cons) = "["++show' vars++show' cons++"]"
+        where showPow v n | n == 0 = ""
+                          | n < 0  = v ++ show n
+                          | otherwise = v ++ "^" ++ show n
+              show' m = Map.foldWithKey (\k v ac -> showPow k v ++ ac) "" m
 
 -- | Converting between forms
 
@@ -170,7 +181,7 @@ adjustTail nf v = tailMap (negate . (`div` v)) nf
 -- | Dimensional unification (p. 45)
 
 dimUnify :: Dim -> Dim -> Maybe DimSubst
-dimUnify d1 d2 = trace ("try to unify" ++ show d1 ++ " & " ++ show d2) dimUnify' (dim2nf (DimProd d1 (DimInv d2)))
+dimUnify d1 d2 = {-trace ("try to unify" ++ show d1 ++ " & " ++ show d2)-} dimUnify' (dim2nf (DimProd d1 (DimInv d2)))
 
 dimUnify' :: NormalForm -> Maybe DimSubst
 dimUnify' nf | m == 0 && numCons nf == 0   = Just nullSubst
@@ -186,12 +197,11 @@ dimUnify' nf | m == 0 && numCons nf == 0   = Just nullSubst
           varDividesAllCons :: Bool
           varDividesAllCons = allValues (\y -> y `mod` x1 == 0) (cons nf)
 
--- | Hulp functies
-
 allValues :: (a -> Bool) -> Map.Map k a -> Bool
 allValues p m = Map.fold ((&&) . p) True m
 
 -- | Simplification
+
 dimSimplify :: Set.Set DimVar -> Dim -> DimSubst
 dimSimplify env = Map.map replaceCons . dimSimplify' . dim2nf . replaceVars
         where 
@@ -216,30 +226,74 @@ dimSimplify' nf | m == 0    = nullSubst
                 | x1 < 0    = let u1 = Map.singleton d1 (DimInv (DimVar d1))
                                   u2 = dimSimplify' (applyDimSubst u1 nf)
                               in let v = u2 <+> u1
-                                 in trace (show v) v
+                                 in {-trace (show v)-} v
                 | m == 1    = let v = Map.singleton d1 . (DimProd (DimVar d1) ). nf2dim . onlyCons . adjustCons nf $ x1
-                              in trace (show v) $ v
+                              in {-trace (show v) $-} v
                 | otherwise = let u1 = Map.singleton d1 . nf2dim . adjustTail nf $ x1
                                   u2 = dimSimplify' (applyDimSubst u1 nf)
                               in let v = u2 <+> u1
-                                 in trace (show v) v
-        where   m = trace (show nf) $ numVars nf
+                                 in {-trace (show v)-} v
+        where   m = {-trace (show nf) $-} numVars nf
                 (d1,x1) = varsHead nf
                 
-              
-invSubst :: DimSubst -> DimSubst
-invSubst = Map.mapWithKey invert
-        where invert :: DimVar -> Dim -> Dim
-              invert k d | isInverse = d
-                         | otherwise = (DimProd (DimVar k)) . DimInv . nf2dim . deleteVar k . dim2nf $ d 
-                        where isInverse = NormalForm (Map.singleton k (-1)) Map.empty == dim2nf d
 
-instance Show Dim where
-    show = show . dim2nf 
-  
-instance Show NormalForm where
-    show (NormalForm vars cons) = "["++show' vars++show' cons++"]"
-        where showPow v n | n == 0 = ""
-                          | n < 0  = v ++ show n
-                          | otherwise = v ++ "^" ++ show n
-              show' m = Map.foldWithKey (\k v ac -> showPow k v ++ ac) "" m
+-- | Inverting substitutions
+
+type DimOrd = ([DimVar], [DimCons])
+
+invSubst :: DimSubst -> DimSubst
+invSubst s = let ordering      = makeOrdering s       -- make arbitry total ordering on vars and cons
+                 matrixForm    = toMatrix ordering s  -- compute substitution matrix wrt. ordering
+                 inverseMatrix = inverse matrixForm   -- invert
+              in fromMatrix ordering inverseMatrix    -- reconstruct substitution
+              
+    where
+
+        makeOrdering :: DimSubst -> DimOrd
+        makeOrdering s = ((Set.toList
+                             ((Map.fold Set.union Set.empty (Map.map (Map.keysSet . vars . dim2nf) s))
+                                 `Set.union`
+                              (Map.keysSet s)
+                             )
+                         ) , (Set.toList
+                             (Map.fold Set.union Set.empty (Map.map (Map.keysSet . cons . dim2nf) s))
+                         ))
+
+        toMatrix :: DimOrd -> DimSubst -> Matrix
+        toMatrix o@(ov, oc) s = map (\k -> maybe (unitVector o k) (toVector o) (Map.lookup k s)) ov
+                                    ++
+                                map (unitVector o) oc
+
+            where
+
+                unitVector :: DimOrd -> DimVar -> Vector
+                unitVector o@(ov, oc) v = let pos = (ov ++ oc ?? v) + 1         -- WRONG!!! (assumes vars and cons to be distinctly named)
+                                              n   = length ov + length oc
+                                           in replicate (pos-1) 0 ++ [1] ++ replicate (n-pos) 0
+
+                toVector :: DimOrd -> Dim -> Vector
+                toVector o@(ov, oc) d = let normalForm = dim2nf d
+                                         in map (\k -> Map.findWithDefault 0 k (vars normalForm)) ov
+                                                ++ 
+                                            map (\k -> Map.findWithDefault 0 k (cons normalForm)) oc
+
+        -- DOES NOT CHECK IF CONSTANTS STILL MAP TO IDENTITY VECTORS!!!
+        fromMatrix :: DimOrd -> Matrix -> DimSubst  
+        fromMatrix o@(ov, oc) m = Map.fromList (zip ov (map (fromVector o) m))
+
+            where
+
+                fromVector :: DimOrd -> Vector -> Dim
+                fromVector o@(ov, oc) vec = let (vv, vc) = splitAt (length ov) vec
+                                                v        = Map.fromList (zip ov vv)
+                                                c        = Map.fromList (zip oc vc)
+                                             in nf2dim $ NormalForm { vars = v, cons = c }
+
+
+-- | Utility functions
+
+infix 4 ??
+
+(??) :: Eq a => [a] -> a -> Int
+vs ?? v = fromJust (elemIndex v vs)
+

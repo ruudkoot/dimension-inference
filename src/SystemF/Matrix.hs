@@ -2,11 +2,12 @@
 
 module SystemF.Matrix where
 
+import Control.Arrow
 import Control.Category hiding ((.))
 import Data.Functor
 
 tmap :: Functor f => (a -> b) -> f (a, a) -> f (b, b)
-tmap f = fmap (\(x,y) -> (f x, f y))
+tmap f = fmap (f *** f)
 
 type Vector              = [Integer]
 type Matrix              = [Vector]
@@ -48,10 +49,14 @@ diagonalize (m@(m1@(pivot:_), m2):ms) = let firstColumnReduced = if pivot == 0
     where reduceRow (r@(q:qs),r') = (multiplyAndAdd (-q) m1 pivot r, multiplyAndAdd (-q) m2 pivot r')
     
 normalize :: AugmentedMatrix -> AugmentedMatrix
-normalize [] = []
-normalize m = let ((r1@(r:rs),r2),(c1,c2)) = augmentedMatrixHead m
-               in ((scalarDivide r r1, scalarDivide r r2),(c1,c2)) <:|:> normalize (augmentedMatrixTail m)
+--normalize [] = []
+--normalize m = let ((r1@(r:rs),r2),(c1,c2)) = augmentedMatrixHead m
+--               in ((scalarDivide r r1, scalarDivide r r2),(c1,c2)) <:|:> normalize (augmentedMatrixTail m)
 
+normalize = normalize' 0
+    where normalize' _ []          = []
+          normalize' n ((m,m'):ms) = let d = m !! n
+                                      in (scalarDivide d m, scalarDivide d m') : normalize' (n+1) ms
 
 scalarMultiply :: Integer -> Vector -> Vector
 scalarMultiply n v = map (n*) v
@@ -83,5 +88,5 @@ augmentedMatrixTail (_:rs) = tmap tail rs
 
 (<:|:>) :: AugmentedMatrixHead -> AugmentedMatrix -> AugmentedMatrix
 ((r1, r2), (c1, c2)) <:|:> t = let (t1, t2) = unzip t
-                                in zip (r1 : (zipWith (:) c1 t1)) (r2 : (zipWith (:) c2 t2))
+                                in zip (r1 : zipWith (:) c1 t1) (r2 : zipWith (:) c2 t2)
 

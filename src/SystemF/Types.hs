@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+
 module SystemF.Types where
 
 import qualified Data.Set as Set
@@ -12,7 +13,7 @@ import Control.Monad.State
 import SystemF.Dimensions
 import SystemF.Substitution
 
-import Debug.Trace
+--import Debug.Trace
 
 type TyVar = String
 
@@ -147,7 +148,7 @@ mgu t           (TyVar u)     = (varBind u t, nullSubst)
 mgu (TyCon (TyReal d1)) (TyCon (TyReal d2)) = 
                                 case dimUnify d1 d2 of
                                     Nothing -> error $ "Error unifiying dimensions" ++show d1++" -- " ++ show d2 ++  show (dim2nf (DimProd d1 (DimInv d2)))
-                                    Just u  -> trace ("Unified " ++ show d1 ++ " -- " ++ show d2 ++ " : " ++ show u) (nullSubst, u)
+                                    Just u  -> {-trace ("Unified " ++ show d1 ++ " -- " ++ show d2 ++ " : " ++ show u)-} (nullSubst, u)
                                 
 mgu (TyCon a)   (TyCon b)     = if a == b 
                                 then nullSubst
