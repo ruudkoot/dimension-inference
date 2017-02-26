@@ -1,0 +1,20 @@
+== Building ==
+
+$ make
+
+
+== Running ==
+
+samples$ apa2 $FILENAME
+
+
+== Module overview ==
+
+Dimensions      Dimension types, normal forms, dimensional unifcation.
+                Mostly follows the thesis by Andrew John Kennedy.
+Inference       Algorithm W with dimensions added.
+Matrix          Calculating inverses in GL(n,Z). Used to invert substitutions.
+Parser          Parses lambda-expressions with let-bindings etc. (see samples).
+Substitution    Not so much to see here.
+Types           Types and unification used by Inference.
+
